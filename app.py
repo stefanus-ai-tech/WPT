@@ -1,7 +1,7 @@
 import os
 import time
 import google.generativeai as genai
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from dotenv import load_dotenv
 
@@ -192,6 +192,14 @@ def process_iq_test():
         'iq_score': iq_score_estimate,
         'gemini_feedback': gemini_feedback
     })
+
+@app.route('/')
+def serve_index():
+    return send_file('index.html')
+
+@app.route('/<path:filename>')
+def serve_static(filename):
+    return send_file(filename)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
