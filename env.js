@@ -1,3 +1,2 @@
-window.ENV = {
-  BACKEND_URL: process.env.BACKEND_URL
-}; 
+const BACKEND_URL = "https://wpt.stefanusadri.my.id";
+export { BACKEND_URL }; 

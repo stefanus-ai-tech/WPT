@@ -1,3 +1,5 @@
+import { BACKEND_URL } from './env.js';
+
 const startButton = document.getElementById('start-button');
 const nextButton = document.getElementById('next-button');
 const restartButton = document.getElementById('restart-button');
@@ -8,7 +10,6 @@ const timerElement = document.getElementById('time');
 const resultContainerElement = document.getElementById('result-container');
 const iqScoreElement = document.getElementById('iq-score');
 const iqLevelElement = document.getElementById('iq-level');
-const BACKEND_URL = "https://wpt.stefanusadri.my.id";
 
 let shuffledQuestions, currentQuestionIndex;
 let score = 0;
@@ -668,14 +669,20 @@ function processResults() {
     fetch(`${BACKEND_URL}/process_iq_test`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
         },
         body: JSON.stringify({ 
             score: score,
             user_responses: userResponses
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
         // Hide analysis container
         document.getElementById('analysis-container').classList.add('hide');
@@ -699,7 +706,7 @@ function processResults() {
         iqLevelElement.innerHTML = `
             <h3>Error</h3>
             <div class="gemini-feedback error">
-                Unable to generate analysis. Please try again later.
+                Unable to generate analysis. Please try again later. Error: ${error.message}
             </div>
         `;
     });
