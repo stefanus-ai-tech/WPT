@@ -8,7 +8,7 @@ const timerElement = document.getElementById('time');
 const resultContainerElement = document.getElementById('result-container');
 const iqScoreElement = document.getElementById('iq-score');
 const iqLevelElement = document.getElementById('iq-level');
-const BACKEND_URL = window.ENV?.BACKEND_URL;
+const BACKEND_URL = "https://wpt.stefanusadri.my.id";
 
 let shuffledQuestions, currentQuestionIndex;
 let score = 0;
