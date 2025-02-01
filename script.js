@@ -8,6 +8,7 @@ const timerElement = document.getElementById('time');
 const resultContainerElement = document.getElementById('result-container');
 const iqScoreElement = document.getElementById('iq-score');
 const iqLevelElement = document.getElementById('iq-level');
+const BACKEND_URL = window.ENV?.BACKEND_URL;
 
 let shuffledQuestions, currentQuestionIndex;
 let score = 0;
@@ -664,7 +665,7 @@ function processResults() {
         correct: question.selectedAnswerIndex === question.correctAnswerIndex
     }));
 
-    fetch('http://127.0.0.1:5001/process_iq_test', {
+    fetch(`${BACKEND_URL}/process_iq_test`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'

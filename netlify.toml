@@ -1,0 +1,6 @@
+[build]
+  publish = "."
+  command = ""
+
+[build.environment]
+  BACKEND_URL = "https://wpt.stefanusadri.my.id" 
