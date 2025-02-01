@@ -1,43 +1,40 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aesthetic IQ Test</title>
-    <link rel="stylesheet" href="style.css"> <!-- Linked CSS stylesheet -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Aesthetic IQ Test</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <!-- Test Taking Container -->
-        <div id="test-container">
-            <h1>Aesthetic IQ Test</h1>
-            <div id="timer">Time Left: <span id="time">60</span> seconds</div>
-            <div id="question-container">
-                <div id="question"></div>
-                <div id="answer-buttons"></div>
-            </div>
-            <button id="next-button" class="hide">Next</button>
-            <button id="start-button">Start Test</button>
-        </div>
-
-        <!-- Analysis Container -->
-        <div id="analysis-container" class="hide">
-            <h1>Analyzing Results</h1>
-            <div id="loading-indicator">
-                <div class="spinner"></div>
-                <p>Please wait while we analyze your test results...</p>
-            </div>
-        </div>
-
-        <!-- Results Container -->
-        <div id="result-container" class="hide">
-            <h2>Your IQ Test Result</h2>
-            <p id="iq-score"></p>
-            <div id="iq-level"></div>
-            <button id="restart-button">Restart Test</button>
-        </div>
+  <div class="container">
+    <!-- Test Container -->
+    <div id="test-container">
+      <h1>WPT based IQ Test</h1>
+      <div id="timer">Time Left: <span id="time">60</span> minutes</div>
+      <div id="question-container">
+        <div id="question"></div>
+        <div id="answer-buttons"></div>
+      </div>
+      <button id="next-button" class="hide">Next</button>
+      <button id="start-button">Start Test</button>
     </div>
-    <script src="script.js"></script> <!-- Linked Javascript file -->
+    <!-- Analysis Container -->
+    <div id="analysis-container" class="hide">
+      <h1>Analyzing Results</h1>
+      <div id="loading-indicator">
+        <div class="spinner"></div>
+        <p>Please wait while we analyze your test results...</p>
+      </div>
+    </div>
+    <!-- Result Container -->
+    <div id="result-container" class="hide">
+      <h2>Your IQ Test Result</h2>
+      <p id="iq-score"></p>
+      <div id="iq-level"></div>
+      <button id="restart-button">Restart Test</button>
+    </div>
+  </div>
+  <script src="script.js"></script>
 </body>
 </html>

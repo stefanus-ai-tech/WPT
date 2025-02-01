@@ -9,7 +9,7 @@ load_dotenv()
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 iq_interpretation = {
     range(0, 13): "Umumnya untuk tenaga kerja pabrik atau kuli angkut",
@@ -17,7 +17,7 @@ iq_interpretation = {
     range(16, 19): "Tingkat dimana tenaga kerja mampu bekerja mandiri tanpa supervisi",
     range(19, 25): "Skor rata-rata tenaga kerja yang bekerja dalam standard sistem alfa-numerik",
     range(25, 27): "Umumnya para supervisor pertama",
-    range(27, 31): "Umumnya manajemen tenga atau teknisi tingkat yang lebih tinggi",
+    range(27, 31): "Umumnya manajemen atau teknisi tingkat yang lebih tinggi",
     range(31, 51): "Umumnya para profesional dan manajer eksekutif"
 }
 
@@ -47,31 +47,39 @@ def calculate_iq(score, total_questions=40):
     return round(iq_estimate)
 
 def generate_gemini_feedback(score, iq_score, iq_level_description, questions_and_answers):
-    model = genai.GenerativeModel("gemini-pro")
+    model = genai.GenerativeModel("gemini-exp-1206")
 
     prompt_parts = [
-        f"Sebagai seorang ahli dalam interpretasi hasil penilaian kognitif, khususnya untuk tes yang mirip dengan Wonderlic Personnel Test (WPT), yang mengukur kemampuan kognitif umum (GCA), seorang peserta tes telah menyelesaikan tes IQ bergaya WPT yang disederhanakan dan mencapai hal berikut:",
+        "(hanya laporan, jangan seperti anda menjawab pertanyaan dan request saya, gak usah pakai 'tentu' atau 'apalah'. Langsung ke laporannya saja)",
+        "Sebagai seorang ahli dalam interpretasi hasil penilaian kognitif, khususnya untuk tes yang mirip dengan Wonderlic Personnel Test (WPT) yang mengukur kemampuan kognitif umum (GCA), seorang peserta tes telah menyelesaikan tes IQ bergaya WPT yang disederhanakan dengan hasil sebagai berikut:",
         f"Skor Mentah: {score} dari 40",
         f"Skor IQ yang Dikonversi (diperkirakan): {iq_score}",
         f"Deskripsi Tingkat IQ: {iq_level_description}",
-        "Konteks untuk Interpretasi WPT (dari dokumen yang disediakan):",
+        "",
+        "Konteks untuk Interpretasi WPT:",
         "- Skor Mentah: Jumlah langsung dari jawaban yang benar.",
-        "- Skor IQ yang Dikonversi: Skor mentah WPT dapat dikonversi menjadi skor IQ, sebanding dengan skor IQ standar seperti WAIS-R FSIQ.",
-        "- Kemampuan Kognitif Umum (GCA): WPT mengukur GCA, terkait dengan skor pencari kerja dan GCA pekerjaan.",
-        "- Skor Komposit: Mirip dengan penilaian seperti SB5 (rata-rata 100, SD 15), skor turunan WPT dapat diinterpretasikan dengan cara yang sama.",
-        "Berdasarkan informasi ini, berikan laporan umpan balik yang komprehensif dan berwawasan tentang keterampilan kognitif peserta tes.",
-        "Laporan tersebut harus mencakup:",
-        "1. Interpretasi Skor Mentah: Jelaskan secara singkat apa yang ditunjukkan oleh skor mentah dalam hal jumlah pertanyaan yang dijawab dengan benar dan tingkat kesulitan tes secara keseluruhan.",
-        "2. Analisis Skor IQ yang Dikonversi: Jelaskan perkiraan skor IQ dalam konteks skala IQ umum. Jelaskan apa yang biasanya menandakan rentang skor IQ ini mengenai kemampuan kognitif.",
-        "3. Penilaian Kemampuan Kognitif Umum (GCA): Berdasarkan skor tersebut, berikan penilaian GCA peserta tes. Kaitkan ini dengan potensi kinerja pekerjaan atau kemampuan belajar, karena WPT sering digunakan untuk penyaringan pekerjaan.",
-        "4. Ringkasan Keterampilan Kognitif Secara Keseluruhan: Ringkaslah kekuatan kognitif peserta tes dan area untuk pengembangan potensial berdasarkan interpretasi gabungan dari skor mentah, skor IQ, dan GCA. Pertahankan nada yang profesional dan informatif.",
-        "Hasilkan laporan umpan balik terperinci minimal tiga paragraf.",
-        "Berikut adalah pertanyaan dan jawaban yang diberikan oleh peserta tes:",
+        "- Skor IQ yang Dikonversi: Mengacu pada konversi skor WPT ke dalam skala IQ standar, misalnya WAIS-R FSIQ.",
+        "- Kemampuan Kognitif Umum (GCA): Indikator kinerja kerja dan kemampuan belajar.",
+        "",
+        "Selain itu, data dari National Adult Literacy Survey (NALS) menunjukkan korelasi yang kuat antara tingkat literasi, skor IQ, dan hasil ekonomi. Misalnya:",
+        "- Individu dengan Prose Level 1 (≤225) cenderung memiliki skor IQ ≤85, dengan peluang ekonomi yang lebih rendah (tingkat pengangguran dan kemiskinan yang tinggi).",
+        "- Sementara individu dengan Prose Level 5 (376-500) umumnya memiliki skor IQ ≥128, dengan tingkat pekerjaan penuh waktu, pendapatan yang lebih tinggi, dan peluang karir yang lebih baik.",
+        "Hal ini menegaskan bahwa peningkatan kemampuan literasi berkorelasi dengan peningkatan kognitif dan hasil ekonomi yang lebih positif.",
+        "",
+        "Buatlah laporan umpan balik yang komprehensif dan berwawasan tentang keterampilan kognitif peserta tes, tanpa terkesan mendikte apa yang harus atau tidak harus dilakukan. Laporan ini harus:",
+        "1. Menginterpretasikan Skor Mentah: Jelaskan makna dari skor tersebut dalam konteks jumlah jawaban benar dan tingkat kesulitan tes.",
+        "2. Menganalisis Skor IQ yang Dikonversi: Berikan gambaran mengenai rentang skor IQ tersebut dan implikasinya terhadap kemampuan kognitif.",
+        "3. Menilai Kemampuan Kognitif Umum (GCA): Kaitkan skor tersebut dengan potensi kinerja dan kemampuan belajar, serta tunjukkan area kekuatan dan peluang peningkatan.",
+        "4. Menambahkan Strategi Gaya Belajar: Berikan saran yang mendukung growth mindset dan rekomendasi strategi belajar yang fleksibel, sesuai dengan gaya belajar peserta. Tekankan bahwa peserta memiliki kebebasan untuk mengeksplorasi metode belajar yang cocok dengan diri mereka, tanpa batasan 'boleh kemana aja atau ga boleh kemana aja'.",
+        "Buatlah laporan umpan balik minimal tiga paragraf yang bersifat inspiratif dan mendukung pertumbuhan.",
+        "",
+        "Berikut adalah daftar pertanyaan dan jawaban yang diberikan oleh peserta tes:",
         "\n".join(f"{qa['question']} -> Jawaban: {qa['answer']}, Benar: {qa['correct']}" for qa in questions_and_answers)
     ]
 
     response = model.generate_content(prompt_parts)
     return response.text
+
 
 @app.route('/test_llm_connection', methods=['GET'])
 def test_llm_connection():
