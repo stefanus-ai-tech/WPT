@@ -94,3 +94,39 @@ h1, h2 { color: #303f9f; margin-bottom: 1.5rem; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 #loading-indicator p { color: #555; font-size: 1.2em; margin: 0; }
+.emulation-controls {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+.emulation-controls h3 {
+  margin-bottom: 1rem;
+  color: #495057;
+  font-size: 1.1em;
+}
+.radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+}
+.radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: white;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.radio-group label:hover {
+  background: #e9ecef;
+}
+.radio-group input[type="radio"]:checked + label {
+  background: #303f9f;
+  color: white;
+  border-color: #283593;
+}

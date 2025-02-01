@@ -11,6 +11,27 @@
     <!-- Test Container -->
     <div id="test-container">
       <h1>WPT based IQ Test</h1>
+      <div id="emulation-controls" class="emulation-controls">
+        <h3>Test Mode:</h3>
+        <div class="radio-group">
+          <label>
+            <input type="radio" name="iq-emulation" value="normal" checked>
+            Normal Test
+          </label>
+          <label>
+            <input type="radio" name="iq-emulation" value="low">
+            Emulate Low IQ (~80)
+          </label>
+          <label>
+            <input type="radio" name="iq-emulation" value="medium">
+            Emulate Medium IQ (~100)
+          </label>
+          <label>
+            <input type="radio" name="iq-emulation" value="high">
+            Emulate High IQ (~130)
+          </label>
+        </div>
+      </div>
       <div id="timer">Time Left: <span id="time">60</span> minutes</div>
       <div id="question-container">
         <div id="question"></div>

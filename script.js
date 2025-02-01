@@ -13,500 +13,495 @@ let shuffledQuestions, currentQuestionIndex;
 let score = 0;
 let timeLeft = 2700; // 45 minutes in seconds
 let timerInterval;
+let isEmulationMode = false;
+let emulationMode = 'normal';
 
-// Array of question objects (excluding geometric questions)
 const questions = [
     {
-      question: '1. RASA SAKIT adalah lawan dari 1.racun 2. kesedihan 3. kepedihan 4. nyaman 5. hukuman',
-      answers: [
-        { text: 'racun', correct: false },
-        { text: 'kesedihan', correct: false },
-        { text: 'kepedihan', correct: false },
-        { text: 'nyaman', correct: true },
-        { text: 'hukuman', correct: false }
-      ],
-      correctAnswerIndex: 3
-    },
-    {
-      question: '2. Satu angka dalam urutan angka ini dihilangkan. Angka berapa itu? 100 97 94 ? 88 85 82',
-      answers: [
-        { text: '91', correct: true },
-        { text: '90', correct: false },
-        { text: '92', correct: false },
-        { text: '89', correct: false },
-        { text: '93', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '3. DERMAWAN adalah lawan kata dari 1. ningrat 2. populer 3. ikut perasaan 4. suka berteman 5. pelit',
-      answers: [
-        { text: 'ningrat', correct: false },
-        { text: 'populer', correct: false },
-        { text: 'ikut perasaan', correct: false },
-        { text: 'suka berteman', correct: false },
-        { text: 'pelit', correct: true }
-      ],
-      correctAnswerIndex: 4
-    },
-    {
-      question: '4. KEMEWAHAN adalah lawan kata dari 1. berlimpah 2. ruah 3. kemiskinan 4. devosi 5. kegagalan',
-      answers: [
-        { text: 'berlimpah', correct: false },
-        { text: 'ruah', correct: false },
-        { text: 'kemiskinan', correct: true },
-        { text: 'devosi', correct: false },
-        { text: 'kegagalan', correct: false }
-      ],
-      correctAnswerIndex: 2
-    },
-    {
-      question: '5. Dalam kelompok kata berikut, manakah kata yang berbeda dari kata yang lain? 1. mobil 2. sepeda 3. mobil van 4. bus 5. truk',
-      answers: [
-        { text: 'mobil', correct: false },
-        { text: 'sepeda', correct: true },
-        { text: 'mobil van', correct: false },
-        { text: 'bus', correct: false },
-        { text: 'truk', correct: false }
-      ],
-      correctAnswerIndex: 1
-    },
-    {
-      question: '6. Berlambat-lambat adalah lawan kata dari 1. mempertahankan 2. tergesa 3. menuntut 4. tetap 5. pelan',
-      answers: [
-        { text: 'mempertahankan', correct: false },
-        { text: 'tergesa', correct: true },
-        { text: 'menuntut', correct: false },
-        { text: 'tetap', correct: false },
-        { text: 'pelan', correct: false }
-      ],
-      correctAnswerIndex: 1
-    },
-    {
-      question: '7. Anggaplah dua pernyataan pertama adalah benar. Pernyataan terakhir: 1. benar 2. salah 3. tidak tahu. Biola semelodi dengan piano. Piano semelodi dengan harpa. Biola semelodi dengan harpa',
-      answers: [
-        { text: 'benar', correct: true },
-        { text: 'salah', correct: false },
-        { text: 'tidak tahu', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '8. Misalkan Anda menyusun kata berikut sehingga menjadi kalimat lengkap. Jika itu kalimat benar tulislah (B), jika Salah tulislah (S). Bensin kayu adalah batu bara dan untuk digunakan',
-      answers: [
-        { text: 'B', correct: false },
-        { text: 'S', correct: true }
-      ],
-      correctAnswerIndex: 1
-    },
-    {
-      question: '9. FURTHER FARTHER Apakah kata ini: 1. memiliki arti yang sama 2. memiliki arti berlawanan 3. tidak memiliki arti sama atau berlainan',
-      answers: [
-        { text: 'memiliki arti yang sama', correct: true },
-        { text: 'memiliki arti berlawanan', correct: false },
-        { text: 'tidak memiliki arti sama atau berlainan', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '10. Mobil seseorang menempuh 16 mil dalam 30 menit. Berapa mil per jam, mobil itu melaju?',
-      answers: [
-        { text: '32', correct: true },
-        { text: '30', correct: false },
-        { text: '28', correct: false },
-        { text: '34', correct: false },
-        { text: '36', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '11. Apakah makna dari kalimat berikut ini: 1. sama 2. berlawanan 3. tidak sama atau berlawanan. "Teman yang setia adalah benteng yang kokoh. Mereka tidak pernah merasakan siapa yang selalu berkorban."',
-      answers: [
-        { text: 'sama', correct: false },
-        { text: 'berlawanan', correct: false },
-        { text: 'tidak sama atau berlawanan', correct: true }
-      ],
-      correctAnswerIndex: 2
-    },
-    {
-      question: '12. Seorang dealer membeli sepeda seharga 2.000 dolar. Ia menjual sepeda itu seharga 2.400 dolar, dan mendapat untung 50 dolar dari setiap sepeda. Berapa banyaknya sepeda yang ia beli?',
-      answers: [
-        { text: '8', correct: true },
-        { text: '10', correct: false },
-        { text: '12', correct: false },
-        { text: '6', correct: false },
-        { text: '5', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '13. Berapa dari enam pasangan ini yang merupakan duplikasi yang sama?',
-      answers: [
-        { text: '1', correct: false },
-        { text: '2', correct: false },
-        { text: '3', correct: true },
-        { text: '4', correct: false },
-        { text: '5', correct: false }
-      ],
-      correctAnswerIndex: 2
-    },
-    {
-      question: '14. Seorang anak berumur 6 tahun, saudarinya dua kali lebih tua darinya. Saat anak itu berumur 10 tahun, berapa umur saudarinya?',
-      answers: [
-        { text: '14', correct: false },
-        { text: '15', correct: false },
-        { text: '16', correct: true },
-        { text: '17', correct: false },
-        { text: '18', correct: false }
-      ],
-      correctAnswerIndex: 2
-    },
-    {
-      question: '15. Dalam rangkaian kata berikut ini, manakah kata yang berbeda dengan yang lainnya? 1. armada 2. band 3. anak-anak 4. satu anak lelaki 5. kerumunan',
-      answers: [
-        { text: 'armada', correct: false },
-        { text: 'band', correct: false },
-        { text: 'anak-anak', correct: false },
-        { text: 'satu anak lelaki', correct: true },
-        { text: 'kerumunan', correct: false }
-      ],
-      correctAnswerIndex: 3
-    },
-    {
-      question: '16. Susunlah kata berikut menjadi pernyataan yang benar. Lalu tulislah huruf terakhir dari kata terakhir. "adalah bumi bulat ini"',
-      answers: [
-        { text: 't', correct: true },
-        { text: 'i', correct: false },
-        { text: 's', correct: false },
-        { text: 'n', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '17. LIBURAN KERJA Apakah kata-kata ini: 1. memiliki arti yang sama 2. memiliki arti yang berlawanan 3. tidak memiliki arti yang sama atau berlawanan?',
-      answers: [
-        { text: 'memiliki arti yang sama', correct: false },
-        { text: 'memiliki arti yang berlawanan', correct: true },
-        { text: 'tidak memiliki arti yang sama atau berlawanan', correct: false }
-      ],
-      correctAnswerIndex: 1
-    },
-    {
-      question: '18. Lihatlah baris angka berikut. Angka berapakah yang muncul selanjutnya? 81 27 9 3 1 1/3 ?',
-      answers: [
-        { text: '1/9', correct: true },
-        { text: '1/27', correct: false },
-        { text: '3', correct: false },
-        { text: '9', correct: false },
-        { text: '1/3', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    // Question 19: [Geometric question excluded]
-    {
-      question: '20. Berapa pasangan dari lima hal dibawah ini yang merupakan duplikasi yang tepat?',
-      answers: [
-        { text: '1', correct: false },
-        { text: '2', correct: true },
-        { text: '3', correct: false },
-        { text: '4', correct: false },
-        { text: '5', correct: false }
-      ],
-      correctAnswerIndex: 1
-    },
-    {
-      question: '21. Misalkan anda menyusun kata berikut menjadi kalimat lengkap. Jika kalimat ini merupakan pernyataan yang benar, tulislah (B). Jika salah, tulislah (S): "semua adalah Orang Amerika negara-negara dari warga negara"',
-      answers: [
-        { text: 'B', correct: false },
-        { text: 'S', correct: true }
-      ],
-      correctAnswerIndex: 1
-    },
-    {
-      question: '22. Anggaplah dua pernyataan pertama adalah benar. Apakah pernyataan terakhir: 1. benar 2. salah 3. tidak tahu? "Semua lelaki berkepala merah menyukai permen. Charles berkepala merah. Charles menyukai permen."',
-      answers: [
-        { text: 'benar', correct: true },
-        { text: 'salah', correct: false },
-        { text: 'tidak tahu', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '23. Dua dari pribahasa berikut ini memiliki makna serupa. Manakah itu?',
-      answers: [
-        { text: 'Pribahasa 1 dan 2', correct: true },
-        { text: 'Pribahasa 2 dan 3', correct: false },
-        { text: 'Pribahasa 3 dan 4', correct: false },
-        { text: 'Pribahasa 4 dan 5', correct: false },
-        { text: 'Pribahasa 1 dan 5', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '24. Sebuah kotak segi empat, yang terisi penuh, memuat 900 kubik kaki buah limo. Jika satu kotak lebarnya 10 kaki dan panjangnya 10 kaki, berapa kedalaman dalam kotak itu?',
-      answers: [
-        { text: '9 kaki', correct: true },
-        { text: '10 kaki', correct: false },
-        { text: '8 kaki', correct: false },
-        { text: '7 kaki', correct: false },
-        { text: '11 kaki', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '25. Sebuah jam terlambat 1 menit 12 detik dalam 24 hari. Berapa detik ia terlambat setiap harinya?',
-      answers: [
-        { text: '3 detik', correct: true },
-        { text: '4 detik', correct: false },
-        { text: '2 detik', correct: false },
-        { text: '5 detik', correct: false },
-        { text: '6 detik', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '26. Anggaplah dua pernyataan pertama ini benar. Apakah pernyataan terakhir: 1. benar 2. salah 3. tidak tahu? "Semua pemimpin progresif. Sebagian besar pemimpin adalah wiraswastawan. Orang yang progresif adalah wiraswastawan."',
-      answers: [
-        { text: 'benar', correct: true },
-        { text: 'salah', correct: false },
-        { text: 'tidak tahu', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '27. Pulsa telpon harganya 15 rupiah per menit. Berapa menit anda dapat memakai untuk 100 rupiah?',
-      answers: [
-        { text: '6 menit', correct: true },
-        { text: '7 menit', correct: false },
-        { text: '5 menit', correct: false },
-        { text: '8 menit', correct: false },
-        { text: '10 menit', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '28. Apakah makna kalimat berikut ini: 1. sama 2. berarti berlawanan 3. tidak sama atau berlainan. "Setiap buah labu dikenal dari akarnya. Anak persis seperti ayahnya."',
-      answers: [
-        { text: 'sama', correct: false },
-        { text: 'berlawanan', correct: false },
-        { text: 'tidak sama atau berlainan', correct: true }
-      ],
-      correctAnswerIndex: 2
-    },
-    {
-      question: '29. Bila 2 ½ yard kain harganya 20 dolar, berapa harga 3 ½ yard?',
-      answers: [
-        { text: '28 dolar', correct: true },
-        { text: '30 dolar', correct: false },
-        { text: '26 dolar', correct: false },
-        { text: '32 dolar', correct: false },
-        { text: '24 dolar', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '30. Berapa duplikasi dari 5 pasang kata berikut ini?',
-      answers: [
-        { text: '1', correct: false },
-        { text: '2', correct: true },
-        { text: '3', correct: false },
-        { text: '4', correct: false },
-        { text: '5', correct: false }
-      ],
-      correctAnswerIndex: 1
-    },
-    {
-      question: '31. Dua orang menangkap 75 ikan. A menangkap 4 kali lebih banyak dari B. Berapa ikan yang B tangkap?',
-      answers: [
-        { text: '15', correct: true },
-        { text: '20', correct: false },
-        { text: '18', correct: false },
-        { text: '12', correct: false },
-        { text: '10', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '32. Dalam kata berikut ini, manakah kata yang berbeda dari lainnya? 1. kumpulan 2. konvoi 3. sekumpulan 4. seorang teman 5. angkatan',
-      answers: [
-        { text: 'kumpulan', correct: false },
-        { text: 'konvoi', correct: false },
-        { text: 'sekumpulan', correct: false },
-        { text: 'seorang teman', correct: true },
-        { text: 'angkatan', correct: false }
-      ],
-      correctAnswerIndex: 3
-    },
-    {
-      question: '33. Anggaplah dua pernyataan pertama benar. Apakah pernyataan terakhir: 1. benar 2. salah 3. tidak tahu? "Bert memberi salam pada Alice. Alice memberi salam pada Lou. Bert tidak memberi salam pada Lou."',
-      answers: [
-        { text: 'benar', correct: false },
-        { text: 'salah', correct: true },
-        { text: 'tidak tahu', correct: false }
-      ],
-      correctAnswerIndex: 1
-    },
-    {
-      question: '34. Apakah angka terkecil dari rangkaian angka ini? 2 1 9 .9 .999 .88',
-      answers: [
-        { text: '2', correct: false },
-        { text: '1', correct: false },
-        { text: '9', correct: false },
-        { text: '.9', correct: false },
-        { text: '.88', correct: true }
-      ],
-      correctAnswerIndex: 4
-    },
-    {
-      question: '35. Sepotong daging sapi beratnya 250 pound. Rata-rata konsumsi daging sapi dalam keluarga setiap harinya adalah 1 2/3 pound. Berapa lama daging sapi ini akan dihabiskan keluarga itu?',
-      answers: [
-        { text: '150 hari', correct: true },
-        { text: '125 hari', correct: false },
-        { text: '175 hari', correct: false },
-        { text: '200 hari', correct: false },
-        { text: '100 hari', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '36. Apakah arti dari kalimat ini : 1. sama 2. berlawanan 3. tidak sama atau berlawanan? "Meski jauh sahabat dapat sejalan. Sahabat merupakan satu jiwa dalam dua badan."',
-      answers: [
-        { text: 'sama', correct: true },
-        { text: 'berlawanan', correct: false },
-        { text: 'tidak sama atau berlawanan', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '37. Berapa banyak yard persegi pada lantai berukuran panjang 9 kaki dan lebar 21 kaki?',
-      answers: [
-        { text: '21', correct: true },
-        { text: '189', correct: false },
-        { text: '18', correct: false },
-        { text: '24', correct: false },
-        { text: '27', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '38. Satu angka dalam rangkaian ini tidak cocok dengan pola angka ini. Angka berapakah itu? 8 9 12 13 16 17 18 20',
-      answers: [
-        { text: '8', correct: false },
-        { text: '9', correct: false },
-        { text: '12', correct: false },
-        { text: '13', correct: false },
-        { text: '16', correct: false },
-        { text: '17', correct: false },
-        { text: '18', correct: true },
-        { text: '20', correct: false }
-      ],
-      correctAnswerIndex: 6
-    },
-    // Question 39: [Geometric question excluded]
-    {
-      question: '40. Seorang penembak menembak target sebesar 12 ½ per rupiah kali ini. Berapa kali ia menembak target?',
-      answers: [
-        { text: '12 ½ kali', correct: true },
-        { text: '12 kali', correct: false },
-        { text: '13 kali', correct: false },
-        { text: '11 ½ kali', correct: false },
-        { text: '10 kali', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '41. Angka berapa yang terkecil dalam rangkaian ini? 2 1 .8 .888 .99?',
-      answers: [
-        { text: '2', correct: false },
-        { text: '1', correct: false },
-        { text: '.8', correct: true },
-        { text: '.888', correct: false },
-        { text: '.99', correct: false }
-      ],
-      correctAnswerIndex: 2
-    },
-    {
-      question: '42. CENSOR CENSURE Apakah kata ini:',
-      answers: [
-        { text: 'memiliki arti yang sama', correct: false },
-        { text: 'memiliki arti berlawanan', correct: false },
-        { text: 'tidak memiliki arti sama atau berlainan', correct: true }
-      ],
-      correctAnswerIndex: 2
-    },
-    {
-      question: '43. Apakah makna dari kalimat ini: 1. sama 2. berlawanan 3. tidak sama atau teman?',
-      answers: [
-        { text: 'sama', correct: true },
-        { text: 'berlawanan', correct: false },
-        { text: 'tidak sama atau teman', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '44. Sebuah jam menunjuk tepat pukul 12 siang pada hari Senin. Pada pukul 8 P.M. hari Selasa, jam itu terlambat 32 detik. Rata-rata, berapa banyak ia terlambat dalam ½ jam?',
-      answers: [
-        { text: '0.8 detik', correct: true },
-        { text: '1 detik', correct: false },
-        { text: '1.6 detik', correct: false },
-        { text: '2 detik', correct: false },
-        { text: '0.5 detik', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '45. Apakah arti dari kalimat berikut: 1. sama 2. berlawanan 3. tidak sama atau?',
-      answers: [
-        { text: 'sama', correct: false },
-        { text: 'berlawanan', correct: false },
-        { text: 'tidak sama atau', correct: true }
-      ],
-      correctAnswerIndex: 2
-    },
-    {
-      question: '46. Grosir membeli satu kardus buah berisi 12 lusin seharga 2.4 dolar. Ia tahu 2 lusin ... (lanjutan tidak lengkap)',
-      answers: [
-        { text: '0.2 dolar per lusin', correct: true },
-        { text: '0.3 dolar per lusin', correct: false },
-        { text: '0.15 dolar per lusin', correct: false },
-        { text: '0.25 dolar per lusin', correct: false },
-        { text: '0.5 dolar per lusin', correct: false }
-      ],
-      correctAnswerIndex: 0
-    },
-    {
-      question: '47. Apakah arti dari kalimat berikut : 1. sama 2. berlawanan 3. tidak sama atau berlawanan?',
-      answers: [
-        { text: 'sama', correct: false },
-        { text: 'berlawanan', correct: true },
-        { text: 'tidak sama atau berlawanan', correct: false }
-      ],
-      correctAnswerIndex: 1
-    },
-    {
-      question: '48. Jumlah jam pada saat terang dan gelap hampir sama pada bulan:',
-      answers: [
-        { text: 'Maret', correct: false },
-        { text: 'Juni', correct: false },
-        { text: 'September', correct: true },
-        { text: 'Desember', correct: false },
-        { text: 'November', correct: false }
-      ],
-      correctAnswerIndex: 2
-    },
-    // Question 49: [Geometric question excluded]
-    {
-      question: '50. Tiga orang membentuk kemitraan dan setuju membagi keuntungan secara rata. X',
-      answers: [
-        { text: 'Masing-masing mendapat 1/3 keuntungan', correct: true },
-        { text: 'Masing-masing mendapat 1/2 keuntungan', correct: false },
-        { text: 'Masing-masing mendapat 1/4 keuntungan', correct: false },
-        { text: 'Keuntungan dibagi tidak rata', correct: false },
-        { text: 'Tidak dapat ditentukan', correct: false }
-      ],
-      correctAnswerIndex: 0
-    }
-  ];
+         question: '1. LAWAN KATA dari RASA SAKIT adalah?',
+         answers: [
+           { text: '1. Racun', correct: false },
+           { text: '2. Kesedihan', correct: false },
+           { text: '3. Kepedihan', correct: false },
+           { text: '4. Nyaman', correct: true },
+           { text: '5. Hukuman', correct: false }
+         ],
+         correctAnswerIndex: 3
+       },
+       {
+         question: '2. Angka berapa yang HILANG dalam urutan angka ini: 100 97 94 ? 88 85 82',
+         answers: [
+           { text: '93', correct: false },
+           { text: '92', correct: false },
+           { text: '91', correct: true },
+           { text: '90', correct: false },
+           { text: '89', correct: false }
+         ],
+         correctAnswerIndex: 2
+       },
+       {
+         question: '3. DERMAWAN adalah lawan kata dari?',
+         answers: [
+           { text: '1. Ningrat', correct: false },
+           { text: '2. Populer', correct: false },
+           { text: '3. Ikut perasaan', correct: false },
+           { text: '4. Suka berteman', correct: false },
+           { text: '5. Pelit', correct: true }
+         ],
+         correctAnswerIndex: 4
+       },
+       {
+         question: '4. KEMEWAHAN adalah lawan kata dari?',
+         answers: [
+           { text: '1. Berlimpah', correct: false },
+           { text: '2. Ruah', correct: false },
+           { text: '3. Kemiskinan', correct: true },
+           { text: '4. Devosi', correct: false },
+           { text: '5. Kegagalan', correct: false }
+         ],
+         correctAnswerIndex: 2
+       },
+       {
+         question: '5. Di antara kelompok kata berikut, manakah kata yang BERBEDA dari yang lain?',
+         answers: [
+           { text: '1. Mobil', correct: false },
+           { text: '2. Sepeda', correct: false },
+           { text: '3. Mobil van', correct: false },
+           { text: '4. Bus', correct: false },
+           { text: '5. Truk', correct: true }
+         ],
+         correctAnswerIndex: 4
+       },
+       {
+         question: '6. Berlambat-lambat adalah lawan kata dari?',
+         answers: [
+           { text: '1. Mempertahankan', correct: false },
+           { text: '2. Tergesa-gesa', correct: true },
+           { text: '3. Menuntut', correct: false },
+           { text: '4. Tetap', correct: false },
+           { text: '5. Pelan', correct: false }
+         ],
+         correctAnswerIndex: 1
+       },
+       {
+         question: '7. ANGGAPLAH dua pernyataan pertama BENAR. \nPernyataan terakhir: Biola semelodi dengan piano. Piano semelodi dengan harpa. Biola semelodi dengan harpa.',
+         answers: [
+           { text: '1. Benar', correct: true },
+           { text: '2. Salah', correct: false },
+           { text: '3. Tidak tahu', correct: false }
+         ],
+         correctAnswerIndex: 0
+       },
+       {
+         question: '8. Misalkan Anda menyusun kata berikut menjadi kalimat lengkap. Jika itu kalimat BENAR tulislah (B), jika SALAH tulislah (S).\n"Bensin kayu adalah batu bara dan untuk digunakan"',
+         answers: [
+           { text: '(B)', correct: false },
+           { text: '(S)', correct: true }
+         ],
+         correctAnswerIndex: 1
+       },
+       {
+         question: '9. FURTHER FARTHER. Apakah kata-kata ini:',
+         answers: [
+           { text: '1. Memiliki arti yang sama', correct: true },
+           { text: '2. Memiliki arti berlawanan', correct: false },
+           { text: '3. Tidak memiliki arti sama atau berlainan', correct: false }
+         ],
+         correctAnswerIndex: 0
+       },
+       {
+         question: '10. Mobil seseorang menempuh 16 mil dalam 30 menit. Berapa mil per jam kecepatan mobil itu?',
+         answers: [
+           { text: '8 mil/jam', correct: false },
+           { text: '16 mil/jam', correct: false },
+           { text: '32 mil/jam', correct: true },
+           { text: '48 mil/jam', correct: false },
+           { text: '64 mil/jam', correct: false }
+         ],
+         correctAnswerIndex: 2
+       },
+       {
+         question: '11. Apakah MAKNA dari kalimat berikut ini: "Teman yang setia adalah benteng yang kokoh. Mereka tidak pernah merasakan siapa yang selalu berkorban."',
+         answers: [
+           { text: '1. Sama', correct: false },
+           { text: '2. Berlawanan', correct: false },
+           { text: '3. Tidak sama atau berlawanan', correct: true }
+         ],
+         correctAnswerIndex: 2
+       },
+       {
+         question: '12. Seorang dealer membeli sepeda seharga 2.000 dolar. Ia menjual sepeda itu seharga 2.400 dolar, dan mendapat untung 50 dolar dari SETIAP sepeda. Berapa BANYAK sepeda yang ia beli?',
+         answers: [
+           { text: '4', correct: false },
+           { text: '6', correct: false },
+           { text: '8', correct: true },
+           { text: '10', correct: false },
+           { text: '12', correct: false }
+         ],
+         correctAnswerIndex: 2
+       },
+       {
+         question: '13. Berapa banyak dari ENAM pasangan berikut yang merupakan DUPLIKASI yang SAMA?',
+         answers: [
+           { text: '1', correct: false },
+           { text: '2', correct: false },
+           { text: '3', correct: false },
+           { text: '4', correct: true },
+           { text: '5', correct: false }
+         ],
+         correctAnswerIndex: 3
+       },
+       {
+         question: '14. Seorang anak berumur 6 tahun, saudarinya dua kali lebih tua darinya. Saat anak itu berumur 10 tahun, berapa umur saudarinya?',
+         answers: [
+           { text: '12 tahun', correct: true },
+           { text: '14 tahun', correct: false },
+           { text: '16 tahun', correct: false },
+           { text: '18 tahun', correct: false },
+           { text: '20 tahun', correct: false }
+         ],
+         correctAnswerIndex: 0
+       },
+       {
+         question: '15. Dalam rangkaian kata berikut ini, manakah kata yang BERBEDA dengan yang lainnya?',
+         answers: [
+           { text: '1. Armada', correct: false },
+           { text: '2. Band', correct: false },
+           { text: '3. Anak-anak', correct: false },
+           { text: '4. Satu anak lelaki', correct: false },
+           { text: '5. Kerumunan', correct: true }
+         ],
+         correctAnswerIndex: 4
+       },
+       {
+         question: '16. Susunlah kata berikut menjadi pernyataan yang BENAR. Lalu tulislah HURUF TERAKHIR dari kata terakhir: "adalah bumi bulat ini"',
+         answers: [
+           { text: 'S', correct: false },
+           { text: 'I', correct: false },
+           { text: 'T', correct: false },
+           { text: 'M', correct: false },
+           { text: 'N', correct: true }
+         ],
+         correctAnswerIndex: 4
+       },
+       {
+         question: '17. LIBURAN KERJA. Apakah kata-kata ini:',
+         answers: [
+           { text: '1. Memiliki arti yang sama', correct: false },
+           { text: '2. Memiliki arti berlawanan', correct: true },
+           { text: '3. Tidak memiliki arti yang sama atau berlawanan', correct: false }
+         ],
+         correctAnswerIndex: 1
+       },
+       {
+         question: '18. Lihatlah baris angka berikut. Angka berapakah yang MUNCUL SELANJUTNYA? 81 27 9 3 1 1/3 ?',
+         answers: [
+           { text: '1/6', correct: false },
+           { text: '1/9', correct: true },
+           { text: '1/2', correct: false },
+           { text: '2/3', correct: false },
+           { text: '1', correct: false }
+         ],
+         correctAnswerIndex: 1
+       },
+       {
+         question: '20. Berapa pasangan dari LIMA hal di bawah ini yang merupakan DUPLIKASI yang TEPAT?',
+         answers: [
+           { text: '1', correct: false },
+           { text: '2', correct: false },
+           { text: '3', correct: true },
+           { text: '4', correct: false },
+           { text: '5', correct: false }
+         ],
+         correctAnswerIndex: 2
+       },
+       {
+         question: '21. Misalkan anda menyusun kata berikut menjadi kalimat lengkap. Jika kalimat ini merupakan pernyataan yang BENAR, tulislah (B). Jika SALAH, tulislah (S).\n"semua adalah Orang Amerika negara-negara dari warga negara"',
+         answers: [
+           { text: '(B)', correct: false },
+           { text: '(S)', correct: true }
+         ],
+         correctAnswerIndex: 1
+       },
+       {
+         question: '22. ANGGAPLAH dua pernyataan pertama adalah BENAR. Apakah pernyataan terakhir: "Semua lelaki berkepala merah menyukai permen. Charles berkepala merah. Charles menyukai permen."',
+         answers: [
+           { text: '1. Benar', correct: true },
+           { text: '2. Salah', correct: false },
+           { text: '3. Tidak tahu', correct: false }
+         ],
+         correctAnswerIndex: 0
+       },
+       {
+         question: '23. Dua dari pribahasa berikut ini memiliki MAKNA SERUPA. Manakah itu?',
+         answers: [
+           { text: '1 & 2', correct: false },
+           { text: '1 & 3', correct: true },
+           { text: '1 & 4', correct: false },
+           { text: '1 & 5', correct: false },
+           { text: '2 & 3', correct: false }
+         ],
+         correctAnswerIndex: 1
+       },
+       {
+         question: '24. Sebuah kotak segi empat, yang terisi penuh, memuat 900 kubik kaki buah limo. Jika satu kotak LEBARNYA 10 kaki dan PANJANGNYA 10 kaki, berapa KEDALAMAN dalam kotak itu?',
+         answers: [
+           { text: '7 kaki', correct: false },
+           { text: '8 kaki', correct: false },
+           { text: '9 kaki', correct: true },
+           { text: '10 kaki', correct: false },
+           { text: '11 kaki', correct: false }
+         ],
+         correctAnswerIndex: 2
+       },
+       {
+         question: '25. Sebuah jam TERLAMBAT 1 menit 12 detik dalam 24 hari. Berapa DETIK ia terlambat SETIAP HARINYA?',
+         answers: [
+           { text: '1 detik', correct: false },
+           { text: '2 detik', correct: false },
+           { text: '3 detik', correct: true },
+           { text: '4 detik', correct: false },
+           { text: '5 detik', correct: false }
+         ],
+         correctAnswerIndex: 2
+       },
+       {
+         question: '26. ANGGAPLAH dua pernyataan pertama ini BENAR. Apakah pertanyaan terakhir: "Semua pemimpin progresif. Sebagian besar pemimpin adalah wiraswastawan. Orang yang progresif adalah wiraswastawan"',
+         answers: [
+           { text: '1. Benar', correct: true },
+           { text: '2. Salah', correct: false },
+           { text: '3. Tidak tahu', correct: false }
+         ],
+         correctAnswerIndex: 0
+       },
+       {
+         question: '27. Pulsa telepon harganya 15 rupiah per menit. Berapa MENIT Anda dapat memakai untuk 100 rupiah?',
+         answers: [
+           { text: '5 menit', correct: false },
+           { text: '6 menit', correct: true },
+           { text: '7 menit', correct: false },
+           { text: '8 menit', correct: false },
+           { text: '9 menit', correct: false }
+         ],
+         correctAnswerIndex: 1
+       },
+       {
+         question: '28. Apakah MAKNA kalimat berikut ini: "Setiap buah labu dikenal dari akarnya. Anak persis seperti ayahnya"',
+         answers: [
+           { text: '1. Sama', correct: true },
+           { text: '2. Berarti berlawanan', correct: false },
+           { text: '3. Tidak sama atau berlawanan', correct: false }
+         ],
+         correctAnswerIndex: 0
+       },
+       {
+         question: '29. Bila 2 ½ yard kain harganya 20 dolar, berapa harga 3 ½ yard?',
+         answers: [
+           { text: '24 dolar', correct: false },
+           { text: '26 dolar', correct: false },
+           { text: '28 dolar', correct: true },
+           { text: '30 dolar', correct: false },
+           { text: '32 dolar', correct: false }
+         ],
+         correctAnswerIndex: 2
+       },
+       {
+         question: '30. Berapa DUPLIKASI dari 5 pasang kata berikut ini?',
+         answers: [
+           { text: '1', correct: false },
+           { text: '2', correct: false },
+           { text: '3', correct: false },
+           { text: '4', correct: true },
+           { text: '5', correct: false }
+         ],
+         correctAnswerIndex: 3
+       },
+       {
+         question: '31. Dua orang menangkap 75 ikan. A menangkap 4 kali LEBIH BANYAK dari B. Berapa ikan yang B tangkap?',
+         answers: [
+           { text: '10', correct: false },
+           { text: '12', correct: false },
+           { text: '15', correct: true },
+           { text: '18', correct: false },
+           { text: '20', correct: false }
+         ],
+         correctAnswerIndex: 2
+       },
+       {
+         question: '32. Dalam kata berikut ini, manakah kata yang BERBEDA dari lainnya?',
+         answers: [
+           { text: '1. Kumpulan', correct: false },
+           { text: '2. Konvoi', correct: false },
+           { text: '3. Sekumpulan', correct: false },
+           { text: '4. Seorang teman', correct: true },
+           { text: '5. Angkatan', correct: false }
+         ],
+         correctAnswerIndex: 3
+       },
+       {
+         question: '33. ANGGAPLAH dua pernyataan pertama BENAR. Apakah pernyataan terakhir: "Bert memberi salam pada Alice. Alice memberi salam pada Lou. Bert tidak memberi salam pada Lou."',
+         answers: [
+           { text: '1. Benar', correct: false },
+           { text: '2. Salah', correct: true },
+           { text: '3. Tidak tahu', correct: false }
+         ],
+         correctAnswerIndex: 1
+       },
+       {
+         question: '34. Apakah angka TERKECIL dari rangkaian angka ini? 2 1 9 9 .999 .88',
+         answers: [
+           { text: '2', correct: false },
+           { text: '1', correct: false },
+           { text: '9', correct: false },
+           { text: '.999', correct: true },
+           { text: '.88', correct: false }
+         ],
+         correctAnswerIndex: 3
+       },
+       {
+         question: '35. Sepotong daging sapi beratnya 250 pound. Rata-rata konsumsi daging sapi dalam keluarga setiap harinya adalah 1 2/3 pound. Berapa LAMA daging sapi ini akan DIHABISKAN keluarga itu?',
+         answers: [
+           { text: '100 hari', correct: false },
+           { text: '125 hari', correct: false },
+           { text: '150 hari', correct: true },
+           { text: '175 hari', correct: false },
+           { text: '200 hari', correct: false }
+         ],
+         correctAnswerIndex: 2
+       },
+       {
+         question: '36. Apakah ARTI dari kalimat ini: "Meski jauh sahabat dapat sejalan. Sahabat merupakan satu jiwa dalam dua badan."',
+         answers: [
+           { text: '1. Sama', correct: true },
+           { text: '2. Berlawanan', correct: false },
+           { text: '3. Tidak sama atau berlawanan', correct: false }
+         ],
+         correctAnswerIndex: 0
+       },
+       {
+         question: '37. Berapa banyak YARD PERSEGI pada lantai berukuran panjang 9 kaki dan lebar 21 kaki? (Catatan: 1 yard = 3 kaki)',
+         answers: [
+           { text: '7 yard persegi', correct: true },
+           { text: '14 yard persegi', correct: false },
+           { text: '21 yard persegi', correct: false },
+           { text: '42 yard persegi', correct: false },
+           { text: '63 yard persegi', correct: false }
+         ],
+         correctAnswerIndex: 0
+       },
+       {
+         question: '38. Satu angka dalam rangkaian ini TIDAK COCOK dengan pola angka ini. Angka berapakah itu? 8 9 12 13 16 17 18 20',
+         answers: [
+           { text: '9', correct: false },
+           { text: '12', correct: false },
+           { text: '17', correct: false },
+           { text: '18', correct: false },
+           { text: '20', correct: true }
+         ],
+         correctAnswerIndex: 4
+       },
+       {
+         question: '40. Seorang penembak menembak target sebesar 12 ½ per rupiah kali ini. Berapa KALI ia harus menembak untuk mendapatkan 10.000 rupiah?',
+         answers: [
+           { text: '800 kali', correct: true },
+           { text: '8000 kali', correct: false },
+           { text: '1250 kali', correct: false },
+           { text: '125 kali', correct: false },
+           { text: '125000 kali', correct: false }
+         ],
+         correctAnswerIndex: 0
+       },
+       {
+         question: '41. Angka berapa yang TERKECIL dalam rangkaian ini? 2 1 .8 .888 .99?',
+         answers: [
+           { text: '2', correct: false },
+           { text: '1', correct: false },
+           { text: '.8', correct: false },
+           { text: '.888', correct: true },
+           { text: '.99', correct: false }
+         ],
+         correctAnswerIndex: 3
+       },
+       {
+         question: '42. CENSOR CENSURE. Apakah kata-kata ini:',
+         answers: [
+           { text: '1. Memiliki arti sama', correct: true },
+           { text: '2. Memiliki arti berlawanan', correct: false },
+           { text: '3. Tidak memiliki arti sama atau berlawanan', correct: false }
+         ],
+         correctAnswerIndex: 0
+       },
+       {
+         question: '43. Apakah MAKNA dari kalimat ini: "Sebuah kepingan jatuh dari balok tua. Anak pengemis pamer layaknya teman."',
+         answers: [
+           { text: '1. Sama', correct: false },
+           { text: '2. Berlawanan', correct: false },
+           { text: '3. Tidak sama atau berlawanan', correct: true }
+         ],
+         correctAnswerIndex: 2
+       },
+       {
+         question: '44. Sebuah jam menunjuk tepat pukul 12 siang pada hari Senin. Pada pukul 8 P.M. hari Selasa, jam itu TERLAMBAT 32 detik. Rata-rata, berapa banyak ia terlambat dalam ½ JAM?',
+         answers: [
+           { text: '0.8 detik', correct: false },
+           { text: '1 detik', correct: true },
+           { text: '1.6 detik', correct: false },
+           { text: '2 detik', correct: false },
+           { text: '0.5 detik', correct: false }
+         ],
+         correctAnswerIndex: 1
+       },
+       {
+         question: '45. Apakah ARTI dari kalimat berikut: "Orang yang menuntut, tidak memerintah. Orang yang mengabaikan keinginannya masih memakai pendapat sendiri."',
+         answers: [
+           { text: '1. Sama', correct: false },
+           { text: '2. Berlawanan', correct: false },
+           { text: '3. Tidak sama atau berlawanan', correct: true }
+         ],
+         correctAnswerIndex: 2
+       },
+       {
+         question: '46. Grosir membeli satu kardus buah berisi 12 lusin seharga 2.4 dolar. Ia tahu 2 lusin akan BUSUK sebelum ia menjual buah itu. Berapa HARGA yang harus dijual setiap lusin buah yang BAGUS, bila ia ingin memperoleh 1/3 dari total pengeluarannya?',
+         answers: [
+           { text: '$0.24', correct: false },
+           { text: '$0.28', correct: false },
+           { text: '$0.32', correct: true },
+           { text: '$0.36', correct: false },
+           { text: '$0.40', correct: false }
+         ],
+         correctAnswerIndex: 2
+       },
+       {
+         question: '47. Apakah ARTI dari kalimat berikut: "Dimana ada keinginan, disitu ada jalan. Raja menjual segala hal untuk kerja keras."',
+         answers: [
+           { text: '1. Sama', correct: false },
+           { text: '2. Berlawanan', correct: false },
+           { text: '3. Tidak sama atau berlawanan', correct: true }
+         ],
+         correctAnswerIndex: 2
+       },
+       {
+         question: '48. Jumlah jam pada saat TERANG dan GELAP hampir SAMA pada bulan:',
+         answers: [
+           { text: '1. Juni', correct: false },
+           { text: '2. September', correct: true },
+           { text: '3. Mei', correct: false },
+           { text: '4. Desember', correct: false }
+         ],
+         correctAnswerIndex: 1
+       },
+       {
+         question: '50. Tiga orang membentuk kemitraan dan setuju membagi keuntungan secara rata. X menginvestasi 5.500 dolar, Y sebesar 3.500 dolar dan Z sebesar 1.000 dolar. Jika keuntungan mencapai 3.000 dolar, LEBIH KURANG berapa yang akan diperoleh X dibandingkan jika keuntungan dibagi berdasarkan besarnya investasi?',
+         answers: [
+           { text: 'Lebih banyak $500', correct: false },
+           { text: 'Lebih sedikit $500', correct: true },
+           { text: 'Lebih banyak $1000', correct: false },
+           { text: 'Lebih sedikit $1000', correct: false },
+           { text: 'Tidak ada perbedaan', correct: false }
+         ],
+         correctAnswerIndex: 1
+       }
+   ];
   
 
 const iqInterpretation = {
@@ -528,11 +523,19 @@ function startTest() {
     shuffledQuestions = questions.sort(() => Math.random() - 0.5);
     currentQuestionIndex = 0;
     score = 0;
-    timeLeft = 2700; // Reset timer to 45 minutes
+    timeLeft = 2700;
     resultContainerElement.classList.add('hide');
     questionContainerElement.classList.remove('hide');
-    setNextQuestion();
-    startTimer();
+    
+    // Check if emulation is enabled
+    const emulatedAnswers = getEmulatedAnswers();
+    if (emulatedAnswers) {
+        // Auto-answer all questions
+        autoAnswerQuestions(emulatedAnswers);
+    } else {
+        setNextQuestion();
+        startTimer();
+    }
 }
 
 function restartTest() {
@@ -647,7 +650,12 @@ function endTest() {
 
 function processResults() {
     const iq = calculateIQ(score);
+    const mode = document.querySelector('input[name="iq-emulation"]:checked').value;
+    const emulationNote = mode !== 'normal' ? 
+        `<p class="emulation-note">(Emulated ${mode} IQ test results)</p>` : '';
+    
     iqScoreElement.innerText = `Your Score: ${score} out of ${questions.length}`;
+    iqScoreElement.innerHTML += emulationNote;
 
     // Collect user responses for analysis
     const userResponses = shuffledQuestions.map((question, index) => ({
@@ -731,6 +739,55 @@ function getIQLevel(iq) { // This function is now replaced by Flask backend
     } else {
         return "Below Average";
     }
+}
+
+function getEmulatedAnswers() {
+  const mode = document.querySelector('input[name="iq-emulation"]:checked').value;
+  let correctProbability;
+  
+  switch(mode) {
+    case 'low':
+      correctProbability = 0.3; // 30% correct answers
+      break;
+    case 'medium':
+      correctProbability = 0.5; // 50% correct answers
+      break;
+    case 'high':
+      correctProbability = 0.85; // 85% correct answers
+      break;
+    default:
+      return null; // Normal mode - no emulation
+  }
+  
+  return shuffledQuestions.map(question => {
+    const random = Math.random();
+    if (random <= correctProbability) {
+      return question.correctAnswerIndex;
+    } else {
+      // Return a random wrong answer
+      const wrongAnswers = question.answers
+        .map((_, index) => index)
+        .filter(index => index !== question.correctAnswerIndex);
+      return wrongAnswers[Math.floor(Math.random() * wrongAnswers.length)];
+    }
+  });
+}
+
+function autoAnswerQuestions(emulatedAnswers) {
+    // Hide timer since we're auto-answering
+    document.getElementById('timer').style.display = 'none';
+    
+    // Process all answers immediately
+    shuffledQuestions.forEach((question, index) => {
+        const selectedAnswerIndex = emulatedAnswers[index];
+        question.selectedAnswerIndex = selectedAnswerIndex;
+        if (selectedAnswerIndex === question.correctAnswerIndex) {
+            score++;
+        }
+    });
+    
+    // Go straight to results
+    endTest();
 }
 
 nextButton.addEventListener('click', () => {
