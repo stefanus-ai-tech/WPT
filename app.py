@@ -149,7 +149,7 @@ def generate_gemini_feedback(score, iq_score, iq_level_description, questions_an
 @app.route('/test_llm_connection', methods=['GET'])
 def test_llm_connection():
     try:
-        model = genai.GenerativeModel("gemini-pro")
+        model = genai.GenerativeModel("gemini-exp-1206")
         response = model.generate_content("This is a test.")
 
         if response and response.text:
