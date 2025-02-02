@@ -5,23 +5,19 @@
 [build.environment]
   PYTHON_VERSION = "3.11"
 
-[[redirects]]
-  from = "/*"
-  to = "/app.py"
-  status = 200
-  force = true
-
-[build.processing]
-  skip_processing = false
-
-[build.processing.python]
-  runtime = "python3.11"
-  entrypoint = "app.py"
+[context.production]
+  command = "python app.py"
 
 [context.production.environment]
   FLASK_ENV = "production"
   FLASK_APP = "app.py"
+  PORT = "5001"
 
 [dev]
   command = "python app.py"
-  targetPort = 5001 
+  targetPort = 5001
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200 
