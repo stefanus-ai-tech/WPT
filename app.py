@@ -23,11 +23,11 @@ client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 app = Flask(__name__)
 
-# Update CORS configuration to be more specific
+# Update CORS configuration for all routes
 CORS(app, resources={
-    r"/process_iq_test": {
+    r"/*": {
         "origins": ["https://wpt-iqtest.netlify.app", "http://localhost:3000"],
-        "methods": ["POST", "OPTIONS"],
+        "methods": ["GET", "POST", "OPTIONS"],
         "allow_headers": ["Content-Type"]
     }
 })

@@ -1,21 +1,5 @@
 [build]
-  command = "python3.11 -m pip install -r requirements.txt"
   publish = "."
-
-[build.environment]
-  PYTHON_VERSION = "3.11.8" # Changed to 3.11.8 (or latest 3.11.x)
-
-[context.production]
-  command = "python app.py"
-
-[context.production.environment]
-  FLASK_ENV = "production"
-  FLASK_APP = "app.py"
-  PORT = "5001"
-
-[dev]
-  command = "python app.py"
-  targetPort = 5001
 
 [[redirects]]
   from = "/*"
