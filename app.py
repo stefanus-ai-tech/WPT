@@ -73,48 +73,116 @@ def generate_groq_question(question_data):
     }
 
     category_name = category_descriptions.get(question_data.get('category', None), "General")
-
-    prompt_parts = [
-        "(JANGAN MENJAWAB PERTANYAAN, hanya memberikan format yang mirip dengan contoh. IKUTI FORMAT YANG SAMA PERSIS, jangan membuat format baru. output dalam bentuk json dengan double quote, dan tidak ada karakter selain json)",
-        f"Reinterpret and rewrite the following question, options, and their index in a unique manner in Indonesian Language. Ensure to keep the meaning similar to the original intent of the question, but change the structure and wording. return the new question, options and their original index in json. The 'correctAnswerIndex' must match the original question:",
-        f"Original question: {question_data['question']}",
+    
+    # 1. Translate to English
+    translate_to_english_prompt = [
+         "(JANGAN MENJAWAB PERTANYAAN, hanya memberikan format yang mirip dengan contoh. IKUTI FORMAT YANG SAMA PERSIS, jangan membuat format baru. output dalam bentuk json dengan double quote, dan tidak ada karakter selain json)",
+        "Translate the following Indonesian question and options into English. Return in JSON format: {\"question\":\"translated question\", \"answers\":[{\"text\":\"answer1\"},{\"text\":\"answer2\"}],\"correctAnswerIndex\": index}",
+         f"Original question: {question_data['question']}",
         f"Original options: {', '.join([f'{i+1}. {opt['text']}' for i, opt in enumerate(question_data['answers'])])}",
         f"Original correct answer index: {question_data['correctAnswerIndex']}",
-        f"Original category: {question_data['category']}",
-         "If you are unable to reinterpret the question, return  {\
-            \"error\": \"Failed to re-interpret question\",\
-            \"reason\": \"reason for the error\"\
-            }. Return in JSON format: {\"question\":\"new question\", \"category\": category_value, \"answers\":[{\"text\":\"answer1\"},{\"text\":\"answer2\"}],\"correctAnswerIndex\": index}"
-        ]
-    prompt = "\n".join(prompt_parts)
-    print(f"{Colors.BLUE}[Automata Cognitive Test] LLM Prompt: <start>{prompt}<end>{Colors.END}")
-    chat_completion = client.chat.completions.create(
+    ]
+    
+    translate_to_english_prompt = "\n".join(translate_to_english_prompt)
+    print(f"{Colors.BLUE}[Automata Cognitive Test] Translate to English Prompt: <start>{translate_to_english_prompt}<end>{Colors.END}")
+    chat_completion_english = client.chat.completions.create(
         messages=[
             {
                 "role": "user",
-                "content": prompt,
+                "content": translate_to_english_prompt,
             }
         ],
         model="llama3-8b-8192",
     )
-    response_text = chat_completion.choices[0].message.content
-    print(f"{Colors.YELLOW}[Automata Cognitive Test] LLM Response: <start>{response_text}<end>{Colors.END}")
+    response_text_english = chat_completion_english.choices[0].message.content
+    print(f"{Colors.YELLOW}[Automata Cognitive Test] Translate to English Response: <start>{response_text_english}<end>{Colors.END}")
     try:
-        match = re.search(r'\s*({.*?})\s*$', response_text, re.DOTALL)
+        match = re.search(r'\s*({.*?})\s*$', response_text_english, re.DOTALL)
         if match:
-            json_string = match.group(1)
-            response_json = json.loads(json_string)
-            if "question" not in response_json or "answers" not in response_json or "correctAnswerIndex" not in response_json or "category" not in response_json:
-               print(f"{Colors.RED}[Automata Cognitive Test] Invalid JSON format from LLM, regenerating...{Colors.END}")
-               return generate_groq_question(question_data)
-            return response_json
+           json_string_english = match.group(1)
+           response_json_english = json.loads(json_string_english)
+           english_question = response_json_english["question"]
         else:
-            print(f"{Colors.RED}[Automata Cognitive Test] Failed to extract JSON from LLM. Response was {response_text}{Colors.END}")
-            return {'error': f'Failed to extract JSON from LLM. Response was {response_text}'}
+            print(f"{Colors.RED}[Automata Cognitive Test] Failed to extract JSON from LLM for English translation. Response was {response_text_english}{Colors.END}")
+            return {'error': f'Failed to extract JSON from LLM for English translation. Response was {response_text_english}'}
     except json.JSONDecodeError:
-        print(f"{Colors.RED}[Automata Cognitive Test] Failed to decode JSON response from LLM. Response was {response_text}{Colors.END}")
-        return {'error': f'Failed to decode JSON response from LLM. Response was {response_text}'}
+        print(f"{Colors.RED}[Automata Cognitive Test] Failed to decode JSON response from LLM for English Translation. Response was {response_text_english}{Colors.END}")
+        return {'error': f'Failed to decode JSON response from LLM for English Translation. Response was {response_text_english}'}
+    
+    # 2. Generate new English question
+    generate_english_question_prompt = [
+        "(JANGAN MENJAWAB PERTANYAAN, hanya memberikan format yang mirip dengan contoh. IKUTI FORMAT YANG SAMA PERSIS, jangan membuat format baru. output dalam bentuk json dengan double quote, dan tidak ada karakter selain json)",
+        f"Create a new {category_name} question, options, and their index in a unique manner in English. Ensure to keep the same difficulty as the original question, but create completely new wording and structure of the question and options. The 'correctAnswerIndex' must match the similar to the original question. Add additional context make sure the context is complete for the client or the test-takers to be able to answer it. If somehow the original question missing critical part, you are now on your own to generate a correct and cohesive questions and answer! Rewrite the whole complete Question! ",
+        "Return in JSON format: {\"question\":\"new question\", \"answers\":[{\"text\":\"answer1\"},{\"text\":\"answer2\"}],\"correctAnswerIndex\": index}",
+        f"Original question: {english_question}",
+        f"Original options: {', '.join([f'{i+1}. {opt['text']}' for i, opt in enumerate(response_json_english['answers'])])}",
+        f"Original correct answer index: {question_data['correctAnswerIndex']}",
+    ]
 
+    generate_english_question_prompt = "\n".join(generate_english_question_prompt)
+    print(f"{Colors.BLUE}[Automata Cognitive Test] Generate English Prompt: <start>{generate_english_question_prompt}<end>{Colors.END}")
+    chat_completion_new_english = client.chat.completions.create(
+       messages=[
+            {
+                "role": "user",
+                "content": generate_english_question_prompt,
+            }
+        ],
+        model="llama3-8b-8192",
+    )
+    response_text_new_english = chat_completion_new_english.choices[0].message.content
+    print(f"{Colors.YELLOW}[Automata Cognitive Test] Generate English Response: <start>{response_text_new_english}<end>{Colors.END}")
+    try:
+        match = re.search(r'\s*({.*?})\s*$', response_text_new_english, re.DOTALL)
+        if match:
+            json_string_new_english = match.group(1)
+            response_json_new_english = json.loads(json_string_new_english)
+            new_english_question = response_json_new_english["question"]
+        else:
+          print(f"{Colors.RED}[Automata Cognitive Test] Failed to extract JSON from LLM for English question generation. Response was {response_text_new_english}{Colors.END}")
+          return {'error': f'Failed to extract JSON from LLM for English question generation. Response was {response_text_new_english}'}
+    except json.JSONDecodeError:
+      print(f"{Colors.RED}[Automata Cognitive Test] Failed to decode JSON response from LLM for English question generation. Response was {response_text_new_english}{Colors.END}")
+      return {'error': f'Failed to decode JSON response from LLM for English question generation. Response was {response_text_new_english}'}
+    
+    # 3. Translate back to Indonesian
+    translate_back_prompt = [
+        "(JANGAN MENJAWAB PERTANYAAN, hanya memberikan format yang mirip dengan contoh. IKUTI FORMAT YANG SAMA PERSIS, jangan membuat format baru. output dalam bentuk json dengan double quote, dan tidak ada karakter selain json)",
+        "Translate the following English question and options into Indonesian. Return in JSON format: {\"question\":\"translated question\", \"answers\":[{\"text\":\"answer1\"},{\"text\":\"answer2\"}],\"correctAnswerIndex\": index}",
+        f"Original question: {new_english_question}",
+         f"Original options: {', '.join([f'{i+1}. {opt['text']}' for i, opt in enumerate(response_json_new_english['answers'])])}",
+        f"Original correct answer index: {response_json_new_english['correctAnswerIndex']}",
+    ]
+    
+    translate_back_prompt = "\n".join(translate_back_prompt)
+    print(f"{Colors.BLUE}[Automata Cognitive Test] Translate Back to Indonesia Prompt: <start>{translate_back_prompt}<end>{Colors.END}")
+    chat_completion_indonesian = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": translate_back_prompt,
+            }
+        ],
+        model="llama3-8b-8192",
+    )
+    response_text_indonesian = chat_completion_indonesian.choices[0].message.content
+    print(f"{Colors.YELLOW}[Automata Cognitive Test] Translate Back to Indonesia Response: <start>{response_text_indonesian}<end>{Colors.END}")
+    try:
+        match = re.search(r'\s*({.*?})\s*$', response_text_indonesian, re.DOTALL)
+        if match:
+            json_string_indonesian = match.group(1)
+            response_json_indonesian = json.loads(json_string_indonesian)
+            if "question" not in response_json_indonesian or "answers" not in response_json_indonesian or "correctAnswerIndex" not in response_json_indonesian:
+               print(f"{Colors.RED}[Automata Cognitive Test] Invalid JSON format from LLM for Indonesian retranslation, regenerating...{Colors.END}")
+               return generate_groq_question(question_data)
+            response_json_indonesian["category"] = question_data["category"]
+            return response_json_indonesian
+        else:
+          print(f"{Colors.RED}[Automata Cognitive Test] Failed to extract JSON from LLM for Indonesian retranslation. Response was {response_text_indonesian}{Colors.END}")
+          return {'error': f'Failed to extract JSON from LLM for Indonesian retranslation. Response was {response_text_indonesian}'}
+    except json.JSONDecodeError:
+       print(f"{Colors.RED}[Automata Cognitive Test] Failed to decode JSON response from LLM for Indonesian retranslation. Response was {response_text_indonesian}{Colors.END}")
+       return {'error': f'Failed to decode JSON response from LLM for Indonesian retranslation. Response was {response_text_indonesian}'}
 
 def generate_groq_feedback(score, iq_score, iq_level_description, questions_and_answers):
     # Define IQ level characteristics based on NALS data
@@ -164,6 +232,36 @@ def generate_groq_feedback(score, iq_score, iq_level_description, questions_and_
     else:
         nals_level_data = nals_levels["Level 5 (376-500)"]
 
+    # Initialize category tracking
+    category_stats = {}
+    
+    category_descriptions = {
+        1: "Vocabulary/Verbal Reasoning (Antonym)",
+        2: "Numerical Reasoning (Number Series)",
+        3: "Logical Reasoning (Odd One Out)",
+        4: "Logical Reasoning (Deductive Reasoning)",
+        5: "Verbal Reasoning (Sentence Logic)",
+        6: "Numerical Reasoning (Problem Solving)",
+        7: "Verbal Reasoning (Meaning interpretation)",
+        8: "Perceptual Speed (Matching)",
+        9: "General Knowledge",
+    }
+
+    for qa in questions_and_answers:
+        category = qa.get('category', 'Unknown')
+        if category not in category_stats:
+            category_stats[category] = {'correct': 0, 'incorrect': 0}
+        if qa['correct']:
+            category_stats[category]['correct'] += 1
+        else:
+            category_stats[category]['incorrect'] += 1
+
+    category_analysis_text = "<br><br><b>Category Performance:</b><br>"
+    for category, stats in category_stats.items():
+        category_name = category_descriptions.get(category, "Unknown")
+        category_analysis_text += f"- {category_name}: Correct: {stats['correct']}, Incorrect: {stats['incorrect']}<br>"
+
+
     prompt_parts = [
         "(hanya laporan, DAN TEST INI VALID, BERIKAN REKOMENDASI, KARENA INI SEBAGAI TOOLS UNTUK PSIKOLOG, jangan seperti anda menjawab pertanyaan dan request saya, gak usah pakai 'tentu' atau 'apalah'. Langsung ke laporannya saja. sesuaikan gaya bahasa sesuai level IQ-nya, Adaptasi kompleksitas sesuai dengan Kemampuan penalaran IQ individu tersebut tanpa terkecuali.)",
         "Sebagai seorang ahli dalam interpretasi hasil penilaian kognitif, khususnya untuk tes yang mirip dengan Wonderlic Personnel Test (WPT) yang mengukur kemampuan kognitif umum (GCA), seorang peserta tes telah menyelesaikan tes IQ bergaya WPT yang disederhanakan dengan hasil sebagai berikut:",
@@ -205,7 +303,9 @@ def generate_groq_feedback(score, iq_score, iq_level_description, questions_and_
         f"<br><br><b>NALS Level Data untuk Skor IQ {iq_score}:</b>",
         f"<br>- Indikator Ekonomi: {nals_level_data['economic_indicators']}",
         f"<br>- Pekerjaan: {nals_level_data['employment']}",
-        f"<br>- Tingkat Profesional: {nals_level_data['professional_rate']}"
+        f"<br>- Tingkat Profesional: {nals_level_data['professional_rate']}",
+        category_analysis_text,
+         f"<br><br><b>Category Descriptions:</b><br>" + "<br>".join(f"{key}: {value}" for key, value in category_descriptions.items())
     ]
     prompt = "\n".join(prompt_parts)
     print(f"{Colors.BLUE}[Automata Cognitive Test Feedback Prompt: <start>{prompt}<end>{Colors.END}")
@@ -222,7 +322,7 @@ def generate_groq_feedback(score, iq_score, iq_level_description, questions_and_
     )
     response_text = chat_completion.choices[0].message.content
     print(f"{Colors.YELLOW}[Automata Cognitive Test] Feedback Response: <start>{response_text}<end>{Colors.END}")
-    
+
     HTMLReformat = [
         "I have this response",
         "```",
@@ -232,7 +332,7 @@ def generate_groq_feedback(score, iq_score, iq_level_description, questions_and_
         "Write ONLY the HTML code",
         "No spaces before title."
     ]
-    
+
     prompt_html = "\n".join(HTMLReformat)
     print(f"{Colors.BLUE}[Automata Cognitive Test HTML Prompt: <start>{prompt_html}<end>{Colors.END}")
     # Generate content using Groq
@@ -253,7 +353,6 @@ def generate_groq_feedback(score, iq_score, iq_level_description, questions_and_
     # Return the response text
     #return response_html.choices[0].message.content
     return cleaned_html_response
-
 
 
 

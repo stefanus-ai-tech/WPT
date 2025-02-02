@@ -12,6 +12,7 @@ const iqScoreElement = document.getElementById('iq-score');
 const iqLevelElement = document.getElementById('iq-level');
 const timerElement = document.getElementById('time');
 const progressBar = document.querySelector('.progress');
+const loadingIndicator = document.createElement('div');
 
 // State Variables
 let shuffledQuestionIndices; // Array of shuffled indices
@@ -48,7 +49,6 @@ function initializeTheme() {
   const theme = savedTheme || (prefersDark ? 'dark' : 'light');
   document.documentElement.setAttribute('data-theme', theme);
 }
-
 
 function toggleTheme() {
     const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -95,7 +95,6 @@ function showQuestion(question, direction = 'next') {
     questionElement.classList.add('slide-out');
     answerButtonsElement.style.opacity = '0';
 
-
   setTimeout(() => {
       // Update question counter
       currentQuestionNum.textContent = currentQuestionIndex + 1;
@@ -110,7 +109,6 @@ function showQuestion(question, direction = 'next') {
 
     questionElement.innerText = question.question;
     answerButtonsElement.innerHTML = '';
-
 
       question.answers.forEach((answer, index) => {
           const button = document.createElement('button');
@@ -220,16 +218,38 @@ function selectAnswer(e) {
     }
 }
 
+loadingIndicator.classList.add('loading-indicator');
+loadingIndicator.innerHTML = '<div class="loader"></div><p>Loading new question, please wait...</p>';
+questionContainerElement.appendChild(loadingIndicator);
+
 async function setNextQuestion() {
   if (currentQuestionIndex < shuffledQuestionIndices.length - 1) {
     currentQuestionIndex++;
-    try {
-      currentGeneratedQuestion = await fetchNewQuestion();
-      showQuestion(currentGeneratedQuestion);
-    } catch (error) {
-        console.error("Failed to process the question:", error);
-      alert("Failed to process the question. Please try again");
+    
+    let retries = 0;
+    const maxRetries = Infinity; // Changed to Infinity
+      
+    const fetchWithRetry = async () => {
+        loadingIndicator.style.display = 'flex'; // Show loader
+      try {
+        currentGeneratedQuestion = await fetchNewQuestion();
+          loadingIndicator.style.display = 'none';
+        showQuestion(currentGeneratedQuestion);
+      } catch (error) {
+          loadingIndicator.style.display = 'none';
+          console.error("Failed to process the question:", error);
+          retries++;
+            // Delay increases exponentially with each retry
+          const delay = 1000 * Math.pow(2, retries); 
+          if (retries <= maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return fetchWithRetry(); // Retry fetch
+        } else {
+            alert("Failed to process question after multiple attempts, please reload.");
+        }
     }
+  };
+  await fetchWithRetry();
   }
 }
 
@@ -248,7 +268,6 @@ questionElement.addEventListener('mouseenter', () => {
 questionElement.addEventListener('mouseleave', () => {
   questionElement.style.animationPlayState = 'running';
 });
-
 
 // --- Timer ---
 function startTimer() {
@@ -353,17 +372,35 @@ async function startTest() {
         if (emulatedAnswers) {
             autoAnswerQuestions(emulatedAnswers);
       } else {
-        try {
-          currentGeneratedQuestion = await fetchNewQuestion();
-          showQuestion(currentGeneratedQuestion);
-          startTimer();
-        } catch (error) {
-          alert("Failed to start the test. Please try again");
-        }
+        
+         let retries = 0;
+        const maxRetries = Infinity; // Changed to Infinity
+      
+        const fetchWithRetry = async () => {
+           loadingIndicator.style.display = 'flex'; // Show loader
+            try {
+              currentGeneratedQuestion = await fetchNewQuestion();
+              loadingIndicator.style.display = 'none';
+              showQuestion(currentGeneratedQuestion);
+                startTimer();
+            } catch (error) {
+                loadingIndicator.style.display = 'none';
+              console.error("Failed to process the question:", error);
+              retries++;
+                // Delay increases exponentially with each retry
+              const delay = 1000 * Math.pow(2, retries);
+              if (retries <= maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, delay));
+                return fetchWithRetry(); // Retry fetch
+              } else {
+                  alert("Failed to process question after multiple attempts, please reload.");
+              }
+          }
+        };
+        await fetchWithRetry();
       }
     }, 100);
 }
-
 
 function endTest() {
   clearInterval(timerInterval);
@@ -373,52 +410,53 @@ function endTest() {
 }
 
 function processResults() {
-    const iq = calculateIQ(score);
-  const mode = document.querySelector('input[name="iq-emulation"]:checked').value;
-    const emulationNote = mode !== 'normal' ?
-      `<p class="emulation-note">(-)</p>` : '';
-  
-  iqScoreElement.innerText = `Your Benchmark Performance Score is ${iq}`;
-    iqScoreElement.innerHTML += emulationNote;
+  const iq = calculateIQ(score);
+const mode = document.querySelector('input[name="iq-emulation"]:checked').value;
+  const emulationNote = mode !== 'normal' ?
+    `<p class="emulation-note">(-)</p>` : '';
 
-   const userResponses = shuffledQuestionIndices.map((index,arrayIndex) => ({
-         question: currentGeneratedQuestion.question,
-         answer: userAnswers[arrayIndex] !== null ? currentGeneratedQuestion.answers[userAnswers[arrayIndex]].text : "Not answered",
-         correct: userAnswers[arrayIndex] === currentGeneratedQuestion.correctAnswerIndex
-    }));
+iqScoreElement.innerText = `Your Estimated IQ is ${iq}`;
+  iqScoreElement.innerHTML += emulationNote;
 
-    fetch('http://127.0.0.1:5001/process_iq_test', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            score: score,
-            user_responses: userResponses
-        })
-    })
-        .then(response => response.json())
-        .then(data => {
-            showContent(resultContent);
-            document.body.classList.add('show-result');
-            iqLevelElement.innerHTML = `
-                <h3>Recommendation Position: ${data.iq_level_description}</h3>
-                <div class="gemini-feedback">
-                ${data.gemini_feedback.replace(/\n/g, '<br>')}
-                </div>
-            `;
-        })
-        .catch(error => {
-            showContent(resultContent);
-            document.body.classList.add('show-result');
-            console.error('Error sending score to server:', error);
-            iqLevelElement.innerHTML = `
-                <h3>Error</h3>
-                <div class="gemini-feedback error">
-                    Unable to generate analysis. Please try again later.
-                </div>
-            `;
-        });
+ const userResponses = shuffledQuestionIndices.map((index,arrayIndex) => ({
+       question: currentGeneratedQuestion.question,
+       answer: userAnswers[arrayIndex] !== null ? currentGeneratedQuestion.answers[userAnswers[arrayIndex]].text : "Not answered",
+       correct: userAnswers[arrayIndex] === currentGeneratedQuestion.correctAnswerIndex,
+         category: currentGeneratedQuestion.category
+  }));
+
+  fetch('http://127.0.0.1:5001/process_iq_test', {
+      method: 'POST',
+      headers: {
+          'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+          score: score,
+          user_responses: userResponses
+      })
+  })
+      .then(response => response.json())
+      .then(data => {
+          showContent(resultContent);
+          document.body.classList.add('show-result');
+          iqLevelElement.innerHTML = `
+              <h3>Recommendation Position: ${data.iq_level_description}</h3>
+              <div class="gemini-feedback">
+              ${data.gemini_feedback.replace(/\n/g, '<br>')}
+              </div>
+          `;
+      })
+      .catch(error => {
+          showContent(resultContent);
+          document.body.classList.add('show-result');
+          console.error('Error sending score to server:', error);
+          iqLevelElement.innerHTML = `
+              <h3>Error</h3>
+              <div class="gemini-feedback error">
+                  Unable to generate analysis. Please try again later.
+              </div>
+          `;
+      });
 }
 
 function calculateIQ(score) {
@@ -437,78 +475,66 @@ function calculateIQ(score) {
         iqEstimate = 90 - (50 - percentageCorrect) * 0.5;
     } else {
         iqEstimate = 70 - (30 - percentageCorrect) * 0.3;
-    }
-
-    return Math.round(iqEstimate);
-}
-
-function getEmulatedAnswers() {
-  const mode = document.querySelector('input[name="iq-emulation"]:checked').value;
-  let correctProbability;
-
-  switch(mode) {
-    case 'low':
-      correctProbability = 0.3;
-      break;
-    case 'medium':
-      correctProbability = 0.5;
-      break;
-    case 'high':
-      correctProbability = 0.85;
-      break;
-    default:
-      return null;
-  }
-
-    return shuffledQuestionIndices.map(() => {
-      const random = Math.random();
-      if (random <= correctProbability) {
-        return currentGeneratedQuestion.correctAnswerIndex;
-      } else {
-        const wrongAnswers = currentGeneratedQuestion.answers
-          .map((_, index) => index)
-          .filter(index => index !== currentGeneratedQuestion.correctAnswerIndex);
-          return wrongAnswers[Math.floor(Math.random() * wrongAnswers.length)];
       }
-    });
-}
-
-function resetState() {
-  shuffledQuestionIndices = null;
-  currentQuestionIndex = 0;
-  score = 0;
-  timeLeft = 2700;
-  userAnswers = [];
-    originalQuestions = [];
-  currentGeneratedQuestion = null;
-  if (timerInterval) {
-    clearInterval(timerInterval);
+  
+      return Math.round(iqEstimate);
   }
-}
-
-function restartTest() {
-  dynamicContainer.classList.add('hide');
-  setTimeout(() => {
-    analysisContent.classList.add('hide');
-    resultContent.classList.add('hide');
-    document.getElementById('test-container').classList.remove('hide');
-  }, 300);
-  document.body.classList.remove('show-result');
-  startButton.classList.remove('hide');
-  questionElement.classList.remove('show');
-  document.getElementById('progress-info').classList.remove('show');
-  questionContainerElement.classList.remove('show');
-  resetState();
-  timerElement.innerText = formatTime(2700);
-}
-
-
-// --- Event Listeners ---
-document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
-startButton.addEventListener('click', startTest);
-nextButton.addEventListener('click', setNextQuestion);
-prevButton.addEventListener('click', setPreviousQuestion);
-document.getElementById('restart-button').addEventListener('click', restartTest);
-
-// --- Initialization ---
-initializeTheme();
+  
+  function getEmulatedAnswers() {
+    const mode = document.querySelector('input[name="iq-emulation"]:checked').value;
+    let correctProbability;
+  
+    switch(mode) {
+      case 'low':
+        correctProbability = 0.3;
+        break;
+      case 'medium':
+        correctProbability = 0.5;
+        break;
+      case 'high':
+        correctProbability = 0.85;
+        break;
+      default:
+        return null;
+    }
+      if (!currentGeneratedQuestion) return null;
+  
+      return shuffledQuestionIndices.map(() => {
+        const random = Math.random();
+        if (random <= correctProbability) {
+          return currentGeneratedQuestion.correctAnswerIndex;
+        } else {
+          const wrongAnswers = currentGeneratedQuestion.answers
+            .map((_, index) => index)
+            .filter(index => index !== currentGeneratedQuestion.correctAnswerIndex);
+            return wrongAnswers[Math.floor(Math.random() * wrongAnswers.length)];
+        }
+      });
+  }
+  
+  function resetState() {
+    shuffledQuestionIndices = null;
+    currentQuestionIndex = 0;
+    score = 0;
+    timeLeft = 2700;
+    userAnswers = [];
+      originalQuestions = [];
+    currentGeneratedQuestion = null;
+    if (timerInterval) {
+      clearInterval(timerInterval);
+    }
+  }
+  
+  function restartTest() {
+    location.reload();
+  }
+  
+  // --- Event Listeners ---
+  document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+  startButton.addEventListener('click', startTest);
+  nextButton.addEventListener('click', setNextQuestion);
+  prevButton.addEventListener('click', setPreviousQuestion);
+  document.getElementById('restart-button').addEventListener('click', restartTest);
+  
+  // --- Initialization ---
+  initializeTheme();

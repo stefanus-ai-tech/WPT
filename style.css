@@ -627,6 +627,32 @@ body.show-result .progress-bar {
   box-shadow: 0 4px 12px var(--shadow-color);
 }
 
+.footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 0.5rem;
+  background: var(--color-tertiary);
+  border-top: 1px solid var(--color-primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8em;
+  z-index: 1001;
+  opacity: 0.8;
+}
+
+.footer a {
+  color: var(--color-secondary);
+  text-decoration: none;
+  transition: color 0.3s var(--transition-timing);
+}
+
+.footer a:hover {
+  color: var(--color-primary);
+}
+
 @media (max-width: 768px) {
   .container {
     width: 95%;
