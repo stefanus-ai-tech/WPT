@@ -1,5 +1,3 @@
-import questions from './questions.js';
-
 // DOM Elements
 const startButton = document.getElementById('start-button');
 const nextButton = document.getElementById('next-button');
@@ -15,154 +13,26 @@ const iqLevelElement = document.getElementById('iq-level');
 const timerElement = document.getElementById('time');
 const progressBar = document.querySelector('.progress');
 
-let shuffledQuestions, currentQuestionIndex, score, timeLeft, timerInterval;
-let userAnswers = [];
+// State Variables
+let shuffledQuestionIndices; // Array of shuffled indices
+let currentQuestionIndex;
+let score;
+let timeLeft;
+let timerInterval;
+let userAnswers; // Array to store user's answers
+let originalQuestions = [];
+let currentGeneratedQuestion;
 
-// Theme handling
-function initializeTheme() {
-  const savedTheme = localStorage.getItem('theme');
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  
-  if (savedTheme) {
-    document.documentElement.setAttribute('data-theme', savedTheme);
-  } else if (prefersDark) {
-    document.documentElement.setAttribute('data-theme', 'dark');
-  }
-}
-
-function toggleTheme() {
-  const currentTheme = document.documentElement.getAttribute('data-theme');
-  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-  
-  document.documentElement.setAttribute('data-theme', newTheme);
-  localStorage.setItem('theme', newTheme);
-}
-
-// Card animations
+// --- Helper Functions ---
 function updateProgressBar() {
-  const progress = ((currentQuestionIndex + 1) / shuffledQuestions.length) * 100;
+  const progress = ((currentQuestionIndex + 1) / shuffledQuestionIndices.length) * 100;
   progressBar.style.width = `${progress}%`;
 }
 
-function showQuestion(question, direction = 'next') {
-  const currentQuestionNum = document.getElementById('current-question');
-  const totalQuestions = document.getElementById('total-questions');
-  
-  questionElement.classList.add('slide-out');
-  answerButtonsElement.style.opacity = '0';
-  
-  setTimeout(() => {
-    // Update question counter
-    currentQuestionNum.textContent = currentQuestionIndex + 1;
-    totalQuestions.textContent = shuffledQuestions.length;
-    
-    questionElement.innerText = question.question;
-    answerButtonsElement.innerHTML = '';
-    
-    question.answers.forEach((answer, index) => {
-      const button = document.createElement('button');
-      button.innerHTML = `
-        <span class="material-icons">radio_button_unchecked</span>
-        ${answer.text}
-      `;
-      button.classList.add('btn');
-      button.dataset.index = index;
-      button.addEventListener('click', selectAnswer);
-      answerButtonsElement.appendChild(button);
-    });
-    
-    questionElement.classList.remove('slide-out');
-    questionElement.classList.add('slide-in');
-    answerButtonsElement.style.opacity = '1';
-    
-    // Update navigation buttons
-    prevButton.classList.toggle('hide', currentQuestionIndex === 0);
-    nextButton.classList.toggle('hide', 
-      currentQuestionIndex === shuffledQuestions.length - 1 || 
-      !userAnswers[currentQuestionIndex]
-    );
-    
-    // Update progress
-    updateProgressBar();
-    
-    // Mark selected answer if exists
-    if (userAnswers[currentQuestionIndex] !== null) {
-      const buttons = answerButtonsElement.children;
-      const selectedIndex = userAnswers[currentQuestionIndex];
-      const correctIndex = question.correctAnswerIndex;
-      
-      Array.from(buttons).forEach((button, index) => {
-        if (index === selectedIndex) {
-          button.querySelector('.material-icons').textContent = 
-            index === correctIndex ? 'check_circle' : 'cancel';
-        }
-        button.disabled = true;
-      });
-    }
-  }, 300);
-}
-
-// Secret keystroke handler
-let secretCode = '';
-document.addEventListener('keydown', (e) => {
-  secretCode += e.key;
-  if (secretCode.length > 11) {
-    secretCode = secretCode.slice(-11);
-  }
-  if (secretCode === 'CJPHONEHOME') {
-    document.querySelector('.modal-overlay').classList.add('show');
-    document.querySelector('.developer-only').classList.add('show');
-    secretCode = '';
-  }
-});
-
-// Handle emulation mode selection
-document.querySelectorAll('input[name="iq-emulation"]').forEach(radio => {
-  radio.addEventListener('change', () => {
-    document.querySelector('.modal-overlay').classList.remove('show');
-    document.querySelector('.developer-only').classList.remove('show');
-    const emulatedAnswers = getEmulatedAnswers();
-    if (emulatedAnswers) {
-      autoAnswerQuestions(emulatedAnswers);
-    }
-  });
-});
-
-document.querySelector('.modal-overlay').addEventListener('click', () => {
-  document.querySelector('.modal-overlay').classList.remove('show');
-  document.querySelector('.developer-only').classList.remove('show');
-});
-
-function startTest() {
-  // Hide all containers first
-  document.getElementById('test-container').classList.remove('hide');
-  dynamicContainer.classList.add('hide');
-  analysisContent.classList.add('hide');
-  resultContent.classList.add('hide');
-  
-  // Initialize test
-  startButton.classList.add('hide');
-  shuffledQuestions = questions.sort(() => Math.random() - 0.5);
-  currentQuestionIndex = 0;
-  score = 0;
-  timeLeft = 2700;
-  userAnswers = new Array(questions.length).fill(null);
-  
-  // Show progress info and question container
-  document.getElementById('progress-info').classList.add('show');
-  questionContainerElement.classList.add('show');
-  questionContainerElement.style.opacity = '0';
-  setTimeout(() => {
-    questionContainerElement.style.opacity = '1';
-    questionElement.classList.add('show');
-    const emulatedAnswers = getEmulatedAnswers();
-    if (emulatedAnswers) {
-      autoAnswerQuestions(emulatedAnswers);
-    } else {
-      showQuestion(shuffledQuestions[currentQuestionIndex]);
-      startTimer();
-    }
-  }, 100);
+function formatTime(timeInSeconds) {
+  const minutes = Math.floor(timeInSeconds / 60);
+  const seconds = timeInSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
 function setStatusClass(element, correct) {
@@ -170,56 +40,204 @@ function setStatusClass(element, correct) {
   element.classList.add(correct ? 'correct' : 'wrong');
 }
 
-function selectAnswer(e) {
-  const selectedButton = e.target.closest('.btn');
-  if (!selectedButton) return;
-  
-  const selectedIndex = parseInt(selectedButton.dataset.index);
-  const correctAnswerIndex = shuffledQuestions[currentQuestionIndex].correctAnswerIndex;
-  const isCorrect = selectedIndex === correctAnswerIndex;
+// --- Theme Handling ---
+function initializeTheme() {
+  const savedTheme = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-  // Only proceed if the answer hasn't been selected before
-  if (userAnswers[currentQuestionIndex] === null) {
-    userAnswers[currentQuestionIndex] = selectedIndex;
+  const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+}
 
-    if (isCorrect) {
-      score++;
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+}
+
+// --- Modal handling ---
+let secretCode = '';
+document.addEventListener('keydown', (e) => {
+    secretCode += e.key;
+    if (secretCode.length > 11) {
+        secretCode = secretCode.slice(-11);
     }
+    if (secretCode === 'CJPHONEHOME') {
+        document.querySelector('.modal-overlay').classList.add('show');
+        document.querySelector('.developer-only').classList.add('show');
+        secretCode = '';
+    }
+});
 
-    Array.from(answerButtonsElement.children).forEach(button => {
-      const buttonIndex = parseInt(button.dataset.index);
-      const icon = button.querySelector('.material-icons');
-      
-      if (buttonIndex === selectedIndex) {
-        icon.textContent = isCorrect ? 'check_circle' : 'cancel';
-      } else if (buttonIndex === correctAnswerIndex) {
-        icon.textContent = 'check_circle';
+document.querySelectorAll('input[name="iq-emulation"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        document.querySelector('.modal-overlay').classList.remove('show');
+        document.querySelector('.developer-only').classList.remove('show');
+        const emulatedAnswers = getEmulatedAnswers();
+        if (emulatedAnswers) {
+            autoAnswerQuestions(emulatedAnswers);
+        }
+    });
+});
+
+document.querySelector('.modal-overlay').addEventListener('click', () => {
+    document.querySelector('.modal-overlay').classList.remove('show');
+    document.querySelector('.developer-only').classList.remove('show');
+});
+
+// --- Question Display and Interaction ---
+function showQuestion(question, direction = 'next') {
+  const currentQuestionNum = document.getElementById('current-question');
+  const totalQuestions = document.getElementById('total-questions');
+
+    questionElement.classList.add('slide-out');
+    answerButtonsElement.style.opacity = '0';
+
+
+  setTimeout(() => {
+      // Update question counter
+      currentQuestionNum.textContent = currentQuestionIndex + 1;
+      totalQuestions.textContent = shuffledQuestionIndices.length;
+
+      if (!question || !question.question || !question.answers) {
+          console.error("Invalid question format:", question);
+          questionElement.innerText = "Failed to load question. Please try again.";
+          answerButtonsElement.innerHTML = ''; // Clear any existing buttons
+          return;
       }
+
+    questionElement.innerText = question.question;
+    answerButtonsElement.innerHTML = '';
+
+
+      question.answers.forEach((answer, index) => {
+          const button = document.createElement('button');
+          button.innerHTML = `
+            <span class="material-icons">radio_button_unchecked</span>
+              ${answer.text}
+          `;
+            button.classList.add('btn');
+          button.dataset.index = index;
+            button.addEventListener('click', selectAnswer);
+          answerButtonsElement.appendChild(button);
+      });
+
+    questionElement.classList.remove('slide-out');
+      questionElement.classList.add('slide-in');
+      answerButtonsElement.style.opacity = '1';
       
-      button.disabled = true;
-      setStatusClass(button, buttonIndex === correctAnswerIndex);
+    // Update navigation buttons
+    prevButton.classList.toggle('hide', currentQuestionIndex === 0);
+      nextButton.classList.toggle('hide',
+          currentQuestionIndex === shuffledQuestionIndices.length - 1 ||
+          !userAnswers[currentQuestionIndex]
+      );
+    
+      updateProgressBar();
+      
+    // Mark selected answer if exists
+        if (userAnswers[currentQuestionIndex] !== null) {
+          const buttons = answerButtonsElement.children;
+          const selectedIndex = userAnswers[currentQuestionIndex];
+          const correctIndex = question.correctAnswerIndex;
+          
+            Array.from(buttons).forEach((button, index) => {
+                if (index === selectedIndex) {
+                  button.querySelector('.material-icons').textContent =
+                      index === correctIndex ? 'check_circle' : 'cancel';
+              }
+              button.disabled = true;
+            });
+        }
+    }, 300);
+}
+
+async function fetchNewQuestion() {
+  try {
+    const response = await fetch('http://127.0.0.1:5001/get_question', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question_index: shuffledQuestionIndices[currentQuestionIndex] }),
     });
 
-    if (currentQuestionIndex < shuffledQuestions.length - 1) {
-      nextButton.classList.remove('hide');
-    } else {
-      setTimeout(endTest, 1000);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `HTTP error! status: ${response.status}`);
     }
+    const jsonResponse = await response.json();
+    console.log("Received JSON:", jsonResponse);
+    if (jsonResponse.error) {
+        throw new Error(jsonResponse.error);
+    }
+        
+    return jsonResponse.question;
+
+  } catch (error) {
+    console.error("Error fetching question:", error);
+    throw error;
   }
 }
 
-function setNextQuestion() {
-  if (currentQuestionIndex < shuffledQuestions.length - 1) {
+
+
+function selectAnswer(e) {
+    const selectedButton = e.target.closest('.btn');
+    if (!selectedButton) return;
+
+    const selectedIndex = parseInt(selectedButton.dataset.index);
+    const correctAnswerIndex = currentGeneratedQuestion.correctAnswerIndex;
+    const isCorrect = selectedIndex === correctAnswerIndex;
+
+    // Only proceed if the answer hasn't been selected before
+    if (userAnswers[currentQuestionIndex] === null) {
+        userAnswers[currentQuestionIndex] = selectedIndex;
+
+        if (isCorrect) {
+            score++;
+        }
+
+        Array.from(answerButtonsElement.children).forEach(button => {
+            const buttonIndex = parseInt(button.dataset.index);
+            const icon = button.querySelector('.material-icons');
+
+            if (buttonIndex === selectedIndex) {
+                icon.textContent = isCorrect ? 'check_circle' : 'cancel';
+            } else if (buttonIndex === correctAnswerIndex) {
+                icon.textContent = 'check_circle';
+            }
+
+            button.disabled = true;
+            setStatusClass(button, buttonIndex === correctAnswerIndex);
+        });
+
+        if (currentQuestionIndex < shuffledQuestionIndices.length - 1) {
+            nextButton.classList.remove('hide');
+        } else {
+            setTimeout(endTest, 1000);
+        }
+    }
+}
+
+async function setNextQuestion() {
+  if (currentQuestionIndex < shuffledQuestionIndices.length - 1) {
     currentQuestionIndex++;
-    showQuestion(shuffledQuestions[currentQuestionIndex], 'next');
+    try {
+      currentGeneratedQuestion = await fetchNewQuestion();
+      showQuestion(currentGeneratedQuestion);
+    } catch (error) {
+        console.error("Failed to process the question:", error);
+      alert("Failed to process the question. Please try again");
+    }
   }
 }
 
 function setPreviousQuestion() {
-  if (currentQuestionIndex > 0) {
-    currentQuestionIndex--;
-    showQuestion(shuffledQuestions[currentQuestionIndex], 'prev');
-  }
+    if (currentQuestionIndex > 0) {
+        currentQuestionIndex--;
+        showQuestion(currentGeneratedQuestion, 'prev');
+    }
 }
 
 // Add floating animation pause on hover
@@ -231,16 +249,8 @@ questionElement.addEventListener('mouseleave', () => {
   questionElement.style.animationPlayState = 'running';
 });
 
-// Event Listeners
-document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
-startButton.addEventListener('click', startTest);
-nextButton.addEventListener('click', setNextQuestion);
-prevButton.addEventListener('click', setPreviousQuestion);
-document.getElementById('restart-button').addEventListener('click', restartTest);
 
-// Initialize theme
-initializeTheme();
-
+// --- Timer ---
 function startTimer() {
   timerElement.innerText = formatTime(timeLeft);
   if (timeLeft <= 0) {
@@ -257,12 +267,7 @@ function startTimer() {
   }, 1000);
 }
 
-function formatTime(timeInSeconds) {
-  const minutes = Math.floor(timeInSeconds / 60);
-  const seconds = timeInSeconds % 60;
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-}
-
+// --- Test Management ---
 function hideTestElements() {
   const testElements = [
     document.getElementById('test-container'),
@@ -273,11 +278,10 @@ function hideTestElements() {
     document.querySelector('.progress-bar'),
     questionElement
   ];
-  
-  // Remove show class from progress elements
-  document.getElementById('progress-info').classList.remove('show');
+    
+    document.getElementById('progress-info').classList.remove('show');
   questionContainerElement.classList.remove('show');
-  
+
   testElements.forEach(el => {
     if (el) {
       el.style.opacity = '0';
@@ -291,29 +295,75 @@ function hideTestElements() {
 }
 
 function showContent(contentElement) {
-  // First hide all test elements
   hideTestElements();
 
-  // Hide all dynamic content first
   [analysisContent, resultContent].forEach(el => {
     if (!el.classList.contains('hide')) {
       el.classList.add('hide');
       el.style.display = 'none';
     }
   });
-  
-  // Show the dynamic container immediately
+
   dynamicContainer.style.display = 'block';
   dynamicContainer.classList.remove('hide');
-  
-  // Show the requested content
+
   contentElement.style.display = 'block';
   contentElement.classList.remove('hide');
-  
-  // Force a reflow to ensure the transition works
-  contentElement.offsetHeight;
-  contentElement.style.opacity = '1';
+
+    contentElement.offsetHeight;
+    contentElement.style.opacity = '1';
 }
+
+function autoAnswerQuestions(emulatedAnswers) {
+  document.getElementById('timer').style.display = 'none';
+
+    shuffledQuestionIndices.forEach((index, arrayIndex) => {
+      const selectedAnswerIndex = emulatedAnswers[arrayIndex];
+        userAnswers[arrayIndex] = selectedAnswerIndex;
+      if (selectedAnswerIndex === currentGeneratedQuestion.correctAnswerIndex) {
+            score++;
+      }
+    });
+
+  endTest();
+}
+
+async function startTest() {
+  // Initialize UI
+    document.getElementById('test-container').classList.remove('hide');
+  dynamicContainer.classList.add('hide');
+    analysisContent.classList.add('hide');
+  resultContent.classList.add('hide');
+  startButton.classList.add('hide');
+    
+    shuffledQuestionIndices = Array.from({ length: 47 }, (_, i) => i).sort(() => Math.random() - 0.5);
+  currentQuestionIndex = 0;
+  score = 0;
+  timeLeft = 2700;
+    userAnswers = new Array(shuffledQuestionIndices.length).fill(null);
+
+    document.getElementById('progress-info').classList.add('show');
+    questionContainerElement.classList.add('show');
+    questionContainerElement.style.opacity = '0';
+    setTimeout(async () => {
+        questionContainerElement.style.opacity = '1';
+    questionElement.classList.add('show');
+
+        const emulatedAnswers = getEmulatedAnswers();
+        if (emulatedAnswers) {
+            autoAnswerQuestions(emulatedAnswers);
+      } else {
+        try {
+          currentGeneratedQuestion = await fetchNewQuestion();
+          showQuestion(currentGeneratedQuestion);
+          startTimer();
+        } catch (error) {
+          alert("Failed to start the test. Please try again");
+        }
+      }
+    }, 100);
+}
+
 
 function endTest() {
   clearInterval(timerInterval);
@@ -323,81 +373,79 @@ function endTest() {
 }
 
 function processResults() {
-  const iq = calculateIQ(score);
+    const iq = calculateIQ(score);
   const mode = document.querySelector('input[name="iq-emulation"]:checked').value;
-  const emulationNote = mode !== 'normal' ? 
-    //`<p class="emulation-note">(Emulated ${mode} IQ test results)</p>` : '';
-    `<p class="emulation-note">(-)</p>` : '';
-
-  //iqScoreElement.innerText = `Your Score: ${score} out of ${questions.length}`;
+    const emulationNote = mode !== 'normal' ?
+      `<p class="emulation-note">(-)</p>` : '';
+  
   iqScoreElement.innerText = `Your Benchmark Performance Score is ${iq}`;
-  iqScoreElement.innerHTML += emulationNote;
+    iqScoreElement.innerHTML += emulationNote;
 
-  const userResponses = shuffledQuestions.map((question, index) => ({
-    question: question.question,
-    answer: userAnswers[index] !== null ? question.answers[userAnswers[index]].text : "Not answered",
-    correct: userAnswers[index] === question.correctAnswerIndex
-  }));
+   const userResponses = shuffledQuestionIndices.map((index,arrayIndex) => ({
+         question: currentGeneratedQuestion.question,
+         answer: userAnswers[arrayIndex] !== null ? currentGeneratedQuestion.answers[userAnswers[arrayIndex]].text : "Not answered",
+         correct: userAnswers[arrayIndex] === currentGeneratedQuestion.correctAnswerIndex
+    }));
 
-  fetch('http://127.0.0.1:5001/process_iq_test', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ 
-      score: score,
-      user_responses: userResponses
+    fetch('http://127.0.0.1:5001/process_iq_test', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            score: score,
+            user_responses: userResponses
+        })
     })
-  })
-  .then(response => response.json())
-  .then(data => {
-    showContent(resultContent);
-    document.body.classList.add('show-result');
-    iqLevelElement.innerHTML = `
-      <h3>Recommendation Position: ${data.iq_level_description}</h3>
-      <div class="gemini-feedback">
-        ${data.gemini_feedback.replace(/\n/g, '<br>')}
-      </div>
-    `;
-  })
-  .catch(error => {
-    showContent(resultContent);
-    document.body.classList.add('show-result');
-    console.error('Error sending score to server:', error);
-    iqLevelElement.innerHTML = `
-      <h3>Error</h3>
-      <div class="gemini-feedback error">
-        Unable to generate analysis. Please try again later.
-      </div>
-    `;
-  });
+        .then(response => response.json())
+        .then(data => {
+            showContent(resultContent);
+            document.body.classList.add('show-result');
+            iqLevelElement.innerHTML = `
+                <h3>Recommendation Position: ${data.iq_level_description}</h3>
+                <div class="gemini-feedback">
+                ${data.gemini_feedback.replace(/\n/g, '<br>')}
+                </div>
+            `;
+        })
+        .catch(error => {
+            showContent(resultContent);
+            document.body.classList.add('show-result');
+            console.error('Error sending score to server:', error);
+            iqLevelElement.innerHTML = `
+                <h3>Error</h3>
+                <div class="gemini-feedback error">
+                    Unable to generate analysis. Please try again later.
+                </div>
+            `;
+        });
 }
 
 function calculateIQ(score) {
-  const percentageCorrect = (score / questions.length) * 100;
-  let iqEstimate = 100;
+  const percentageCorrect = (score / shuffledQuestionIndices.length) * 100;
+    let iqEstimate = 100;
 
-  if (percentageCorrect >= 90) {
-    iqEstimate = 140 + (percentageCorrect - 90) * 2;
-  } else if (percentageCorrect >= 80) {
-    iqEstimate = 130 + (percentageCorrect - 80);
-  } else if (percentageCorrect >= 70) {
-    iqEstimate = 120 + (percentageCorrect - 70);
-  } else if (percentageCorrect >= 50) {
-    iqEstimate = 100 + (percentageCorrect - 50) * 0.8;
-  } else if (percentageCorrect >= 30) {
-    iqEstimate = 90 - (50 - percentageCorrect) * 0.5;
-  } else {
-    iqEstimate = 70 - (30 - percentageCorrect) * 0.3;
-  }
+    if (percentageCorrect >= 90) {
+        iqEstimate = 140 + (percentageCorrect - 90) * 2;
+    } else if (percentageCorrect >= 80) {
+        iqEstimate = 130 + (percentageCorrect - 80);
+    } else if (percentageCorrect >= 70) {
+        iqEstimate = 120 + (percentageCorrect - 70);
+    } else if (percentageCorrect >= 50) {
+        iqEstimate = 100 + (percentageCorrect - 50) * 0.8;
+    } else if (percentageCorrect >= 30) {
+        iqEstimate = 90 - (50 - percentageCorrect) * 0.5;
+    } else {
+        iqEstimate = 70 - (30 - percentageCorrect) * 0.3;
+    }
 
-  return Math.round(iqEstimate);
+    return Math.round(iqEstimate);
 }
 
 function getEmulatedAnswers() {
   const mode = document.querySelector('input[name="iq-emulation"]:checked').value;
   let correctProbability;
-  
+
   switch(mode) {
     case 'low':
       correctProbability = 0.3;
@@ -411,43 +459,28 @@ function getEmulatedAnswers() {
     default:
       return null;
   }
-  
-  return shuffledQuestions.map(question => {
-    const random = Math.random();
-    if (random <= correctProbability) {
-      return question.correctAnswerIndex;
-    } else {
-      const wrongAnswers = question.answers
-        .map((_, index) => index)
-        .filter(index => index !== question.correctAnswerIndex);
-      return wrongAnswers[Math.floor(Math.random() * wrongAnswers.length)];
-    }
-  });
-}
 
-function autoAnswerQuestions(emulatedAnswers) {
-  document.getElementById('timer').style.display = 'none';
-  
-  shuffledQuestions.forEach((question, index) => {
-    const selectedAnswerIndex = emulatedAnswers[index];
-    userAnswers[index] = selectedAnswerIndex;
-    if (selectedAnswerIndex === question.correctAnswerIndex) {
-      score++;
-    }
-  });
-  
-  endTest();
+    return shuffledQuestionIndices.map(() => {
+      const random = Math.random();
+      if (random <= correctProbability) {
+        return currentGeneratedQuestion.correctAnswerIndex;
+      } else {
+        const wrongAnswers = currentGeneratedQuestion.answers
+          .map((_, index) => index)
+          .filter(index => index !== currentGeneratedQuestion.correctAnswerIndex);
+          return wrongAnswers[Math.floor(Math.random() * wrongAnswers.length)];
+      }
+    });
 }
 
 function resetState() {
-  // Reset all state variables
-  shuffledQuestions = null;
+  shuffledQuestionIndices = null;
   currentQuestionIndex = 0;
   score = 0;
   timeLeft = 2700;
   userAnswers = [];
-  
-  // Clear any existing intervals
+    originalQuestions = [];
+  currentGeneratedQuestion = null;
   if (timerInterval) {
     clearInterval(timerInterval);
   }
@@ -468,3 +501,14 @@ function restartTest() {
   resetState();
   timerElement.innerText = formatTime(2700);
 }
+
+
+// --- Event Listeners ---
+document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+startButton.addEventListener('click', startTest);
+nextButton.addEventListener('click', setNextQuestion);
+prevButton.addEventListener('click', setPreviousQuestion);
+document.getElementById('restart-button').addEventListener('click', restartTest);
+
+// --- Initialization ---
+initializeTheme();

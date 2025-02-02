@@ -4,15 +4,22 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from dotenv import load_dotenv
 from groq import Groq
-
+import json
+import random
+import re
 
 load_dotenv()
-#genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
+# ANSI escape codes for colors
+class Colors:
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    END = '\033[0m'
 
 # Initialize Groq client
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -52,10 +59,64 @@ def calculate_iq(score, total_questions=40):
 
     return round(iq_estimate)
 
+def generate_groq_question(question_data):
+    category_descriptions = {
+        1: "Vocabulary/Verbal Reasoning (Antonym)",
+        2: "Numerical Reasoning (Number Series)",
+        3: "Logical Reasoning (Odd One Out)",
+        4: "Logical Reasoning (Deductive Reasoning)",
+        5: "Verbal Reasoning (Sentence Logic)",
+        6: "Numerical Reasoning (Problem Solving)",
+        7: "Verbal Reasoning (Meaning interpretation)",
+        8: "Perceptual Speed (Matching)",
+        9: "General Knowledge",
+    }
+
+    category_name = category_descriptions.get(question_data.get('category', None), "General")
+
+    prompt_parts = [
+        "(JANGAN MENJAWAB PERTANYAAN, hanya memberikan format yang mirip dengan contoh. IKUTI FORMAT YANG SAMA PERSIS, jangan membuat format baru. output dalam bentuk json dengan double quote, dan tidak ada karakter selain json)",
+        f"Reinterpret and rewrite the following question, options, and their index in a unique manner in Indonesian Language. Ensure to keep the meaning similar to the original intent of the question, but change the structure and wording. return the new question, options and their original index in json. The 'correctAnswerIndex' must match the original question:",
+        f"Original question: {question_data['question']}",
+        f"Original options: {', '.join([f'{i+1}. {opt['text']}' for i, opt in enumerate(question_data['answers'])])}",
+        f"Original correct answer index: {question_data['correctAnswerIndex']}",
+        f"Original category: {question_data['category']}",
+         "If you are unable to reinterpret the question, return  {\
+            \"error\": \"Failed to re-interpret question\",\
+            \"reason\": \"reason for the error\"\
+            }. Return in JSON format: {\"question\":\"new question\", \"category\": category_value, \"answers\":[{\"text\":\"answer1\"},{\"text\":\"answer2\"}],\"correctAnswerIndex\": index}"
+        ]
+    prompt = "\n".join(prompt_parts)
+    print(f"{Colors.BLUE}[Automata Cognitive Test] LLM Prompt: <start>{prompt}<end>{Colors.END}")
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ],
+        model="llama3-8b-8192",
+    )
+    response_text = chat_completion.choices[0].message.content
+    print(f"{Colors.YELLOW}[Automata Cognitive Test] LLM Response: <start>{response_text}<end>{Colors.END}")
+    try:
+        match = re.search(r'\s*({.*?})\s*$', response_text, re.DOTALL)
+        if match:
+            json_string = match.group(1)
+            response_json = json.loads(json_string)
+            if "question" not in response_json or "answers" not in response_json or "correctAnswerIndex" not in response_json or "category" not in response_json:
+               print(f"{Colors.RED}[Automata Cognitive Test] Invalid JSON format from LLM, regenerating...{Colors.END}")
+               return generate_groq_question(question_data)
+            return response_json
+        else:
+            print(f"{Colors.RED}[Automata Cognitive Test] Failed to extract JSON from LLM. Response was {response_text}{Colors.END}")
+            return {'error': f'Failed to extract JSON from LLM. Response was {response_text}'}
+    except json.JSONDecodeError:
+        print(f"{Colors.RED}[Automata Cognitive Test] Failed to decode JSON response from LLM. Response was {response_text}{Colors.END}")
+        return {'error': f'Failed to decode JSON response from LLM. Response was {response_text}'}
+
 
 def generate_groq_feedback(score, iq_score, iq_level_description, questions_and_answers):
-
-
     # Define IQ level characteristics based on NALS data
     nals_levels = {
         "Level 1 (≤225)": {
@@ -147,7 +208,7 @@ def generate_groq_feedback(score, iq_score, iq_level_description, questions_and_
         f"<br>- Tingkat Profesional: {nals_level_data['professional_rate']}"
     ]
     prompt = "\n".join(prompt_parts)
-    print(prompt)
+    print(f"{Colors.BLUE}[Automata Cognitive Test Feedback Prompt: <start>{prompt}<end>{Colors.END}")
     # Generate content using Groq
     chat_completion = client.chat.completions.create(
         messages=[
@@ -156,23 +217,24 @@ def generate_groq_feedback(score, iq_score, iq_level_description, questions_and_
                 "content": prompt,
             }
         ],
-        model="llama3-8b-8192",  # Or another suitable model like "mixtral-8x7b-32768"
+        model="llama3-8b-8192",  # Or another suitable model like "mixtral-8x
+        # Or another suitable model like "mixtral-8x7b-32768"
     )
     response_text = chat_completion.choices[0].message.content
+    print(f"{Colors.YELLOW}[Automata Cognitive Test] Feedback Response: <start>{response_text}<end>{Colors.END}")
     
     HTMLReformat = [
-        "I have this response"
+        "I have this response",
         "```",
         f"{response_text}",
         "```",
         "Make the response into HTML format and into short points with the same language",
-        "Write ONLY the HTML code"
+        "Write ONLY the HTML code",
         "No spaces before title."
     ]
     
     prompt_html = "\n".join(HTMLReformat)
-    print(prompt_html)
-
+    print(f"{Colors.BLUE}[Automata Cognitive Test HTML Prompt: <start>{prompt_html}<end>{Colors.END}")
     # Generate content using Groq
     response_html = client.chat.completions.create(
         messages=[
@@ -185,7 +247,7 @@ def generate_groq_feedback(score, iq_score, iq_level_description, questions_and_
     )
 
     html_response_text = response_html.choices[0].message.content
-
+    print(f"{Colors.YELLOW}[Automata Cognitive Test] HTML Response: <start>{html_response_text}<end>{Colors.END}")
     # Remove leading spaces/newlines from HTML
     cleaned_html_response = html_response_text.lstrip()
     # Return the response text
@@ -218,6 +280,41 @@ def test_llm_connection():
     except Exception as e:
         return jsonify({'status': 'error', 'message': 'LLM Connection Failed', 'error': str(e)})
 
+# Store generated questions in a dictionary, indexed by their original index
+generated_questions = {}
+generation_percentage = 0
+original_questions = []
+
+@app.route('/get_question', methods=['POST'])
+def get_question():
+    global generated_questions, generation_percentage
+    data = request.get_json()
+    if not data or 'question_index' not in data:
+        return jsonify({'error': 'Invalid request'}), 400
+
+    question_index = data['question_index']
+
+    if question_index not in generated_questions:
+        # Generate a new question using Groq
+        if question_index < len(original_questions):
+            new_question_data = generate_groq_question(original_questions[question_index])
+            if new_question_data:
+               if 'error' in new_question_data:
+                   return jsonify(new_question_data), 500
+               else:
+                  generated_questions[question_index] = new_question_data
+                  generation_percentage =  round((len(generated_questions) / len(original_questions)) * 100, 2)
+            else:
+                return jsonify({'error': f'Failed to generate question for index {question_index}'}), 500
+        else:
+          return jsonify({'error': 'Invalid question index'}), 400
+    
+    return jsonify(
+        {
+            'question': generated_questions[question_index],
+            'generation_percentage': generation_percentage
+        }
+    )
 
 @app.route('/process_iq_test', methods=['POST'])
 def process_iq_test():
@@ -260,5 +357,18 @@ def serve_index():
 def serve_static(filename):
     return send_file(filename)
 
+# Load questions from questions.json as JSON
+def load_questions():
+    with open('questions.json', 'r') as f:
+        try:
+            return json.load(f)['questions']
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON format in questions.json: {e}")
+
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    try:
+        original_questions = load_questions()
+        app.run(debug=True, port=5001)
+    except ValueError as e:
+        print(f"Error loading questions: {e}")
