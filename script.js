@@ -1,3 +1,5 @@
+import { currentConfig } from './config.js';
+
 // DOM Elements
 const startButton = document.getElementById('start-button');
 const nextButton = document.getElementById('next-button');
@@ -31,6 +33,15 @@ questionCategories.forEach(category => {
     score[category] = 0;
 });
 
+// Add this near the top of the file
+function getBaseUrl() {
+    // For development environments, you might want to override with a specific URL
+    if (process.env.NODE_ENV === 'development') {
+        return 'http://localhost:5001';
+    }
+    // Otherwise use the current origin
+    return window.location.origin;
+}
 
 // --- Helper Functions ---
 function updateProgressBar() {
@@ -159,9 +170,10 @@ function showQuestion(question, direction = 'next') {
         }
     }, 300);
 }
-async function fetchNewQuestion() {
+
+const fetchNewQuestion = async () => {
     try {
-        const response = await fetch('http://127.0.0.1:5001/get_question', {
+        const response = await fetch(`${currentConfig.baseUrl}/get_question`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ question_index: shuffledQuestionIndices[currentQuestionIndex] }),
@@ -184,7 +196,6 @@ async function fetchNewQuestion() {
         throw error;
     }
 }
-
 
 function selectAnswer(e) {
   const selectedButton = e.target.closest('.btn');
@@ -447,7 +458,7 @@ function processResults() {
          };
     });
 
-    fetch('http://127.0.0.1:5001/process_iq_test', {
+    fetch(`${currentConfig.baseUrl}/process_iq_test`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
