@@ -3,7 +3,7 @@
   publish = "."
 
 [build.environment]
-  PYTHON_VERSION = "3.11.0"
+  PYTHON_VERSION = "3.11.8" # Changed to 3.11.8 (or latest 3.11.x)
 
 [context.production]
   command = "python app.py"
@@ -20,4 +20,4 @@
 [[redirects]]
   from = "/*"
   to = "/index.html"
-  status = 200 
+  status = 200
