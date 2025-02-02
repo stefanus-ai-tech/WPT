@@ -1,0 +1,12 @@
+[build]
+  publish = "."
+  base = "frontend"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[build.environment]
+  # Other environment variables, if any
+  MISE_PY_COMPILE = "0" # Force mise to use a pre-compiled version
