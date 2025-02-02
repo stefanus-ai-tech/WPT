@@ -84,7 +84,7 @@ def generate_groq_question(question_data):
     ]
     
     translate_to_english_prompt = "\n".join(translate_to_english_prompt)
-    print(f"{Colors.BLUE}[Automata Cognitive Test] Translate to English Prompt: <start>{translate_to_english_prompt}<end>{Colors.END}")
+    print(f"{Colors.BLUE}[Automata Cognitive Test] Translate to Elegant and scientific well written research paper English Prompt: <start>{translate_to_english_prompt}<end>{Colors.END}")
     chat_completion_english = client.chat.completions.create(
         messages=[
             {
@@ -148,7 +148,7 @@ def generate_groq_question(question_data):
     # 3. Translate back to Indonesian
     translate_back_prompt = [
         "(JANGAN MENJAWAB PERTANYAAN, hanya memberikan format yang mirip dengan contoh. IKUTI FORMAT YANG SAMA PERSIS, jangan membuat format baru. output dalam bentuk json dengan double quote, dan tidak ada karakter selain json)",
-        "Translate the following English question and options into Indonesian. Return in JSON format: {\"question\":\"translated question\", \"answers\":[{\"text\":\"answer1\"},{\"text\":\"answer2\"}],\"correctAnswerIndex\": index}",
+        "Translate the following English question and options into Indonesian Make the question written and follows indonesian formal language and EYD grammar very strictly!. Return in JSON format: {\"question\":\"translated question\", \"answers\":[{\"text\":\"answer1\"},{\"text\":\"answer2\"}],\"correctAnswerIndex\": index}",
         f"Original question: {new_english_question}",
          f"Original options: {', '.join([f'{i+1}. {opt['text']}' for i, opt in enumerate(response_json_new_english['answers'])])}",
         f"Original correct answer index: {response_json_new_english['correctAnswerIndex']}",
@@ -176,13 +176,51 @@ def generate_groq_question(question_data):
                print(f"{Colors.RED}[Automata Cognitive Test] Invalid JSON format from LLM for Indonesian retranslation, regenerating...{Colors.END}")
                return generate_groq_question(question_data)
             response_json_indonesian["category"] = question_data["category"]
-            return response_json_indonesian
+            #4. Self-Audit Question
+            audit_prompt = [
+            "Carefully check the following question, and answer, Try to answer it and elaborate it properly with encapsulate with your <think> </think> on how you approach the problem with your logic and the available context of the question and answer. if the question is lacking complete context and not logical or the answer is not correct. aggresively blacklist it and return {} or JSON Failure. However If all Logical correct, return the same json as input",
+             f"Question: {response_json_indonesian['question']}",
+            f"Options: {', '.join([f'{i+1}. {opt['text']}' for i, opt in enumerate(response_json_indonesian['answers'])])}",
+            f"Correct answer index: {response_json_indonesian['correctAnswerIndex']}"
+             ]
+            audit_prompt = "\n".join(audit_prompt)
+            print(f"{Colors.BLUE}[Automata Cognitive Test] Self Audit Prompt: <start>{audit_prompt}<end>{Colors.END}")
+            chat_completion_audit = client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": audit_prompt,
+                    }
+                ],
+                model="llama3-8b-8192",
+            )
+            audit_response = chat_completion_audit.choices[0].message.content
+            print(f"{Colors.YELLOW}[Automata Cognitive Test] Self Audit Response: <start>{audit_response}<end>{Colors.END}")
+
+            try:
+                match_audit = re.search(r'\s*({.*?})\s*$', audit_response, re.DOTALL)
+                if match_audit:
+                   json_string_audit = match_audit.group(1)
+                   audit_json = json.loads(json_string_audit)
+                   if not audit_json:
+                        print(f"{Colors.RED}[Automata Cognitive Test] Self-Audit failed, returning blank JSON{Colors.END}")
+                        return {}
+                   else:
+                       return response_json_indonesian
+                else:
+                   print(f"{Colors.RED}[Automata Cognitive Test] Self-Audit failed, returning blank JSON. No JSON was found, response was: {audit_response}{Colors.END}")
+                   return {}
+            except json.JSONDecodeError:
+                print(f"{Colors.RED}[Automata Cognitive Test] Self-Audit failed, JSON decode error, returning blank JSON. Response was: {audit_response}{Colors.END}")
+                return {}
+
         else:
           print(f"{Colors.RED}[Automata Cognitive Test] Failed to extract JSON from LLM for Indonesian retranslation. Response was {response_text_indonesian}{Colors.END}")
           return {'error': f'Failed to extract JSON from LLM for Indonesian retranslation. Response was {response_text_indonesian}'}
     except json.JSONDecodeError:
        print(f"{Colors.RED}[Automata Cognitive Test] Failed to decode JSON response from LLM for Indonesian retranslation. Response was {response_text_indonesian}{Colors.END}")
        return {'error': f'Failed to decode JSON response from LLM for Indonesian retranslation. Response was {response_text_indonesian}'}
+    
 
 def generate_groq_feedback(overall_score, iq_score, iq_level_description, questions_and_answers, category_scores):
     # Define IQ level characteristics based on NALS data
@@ -208,7 +246,7 @@ def generate_groq_feedback(overall_score, iq_score, iq_level_description, questi
         "Level 4 (326-375)": {
             "economic_indicators": "17% di luar angkatan kerja, 8% hidup dalam kemiskinan",
             "employment": "64% bekerja penuh waktu, median upah mingguan $465",
-            "professional_rate": "46% bekerja di posisi profesional/manajerial",
+            "professional_rate": "46% bekerja di posisiprofesional/manajerial",
             "language_style": "detail dan analitis"
         },
         "Level 5 (376-500)": {
@@ -399,6 +437,8 @@ def get_question():
             if new_question_data:
                if 'error' in new_question_data:
                    return jsonify(new_question_data), 500
+               elif not new_question_data: #Check if it returns empty json
+                   return get_question() #regenerate if empty
                else:
                   generated_questions[question_index] = new_question_data
                   generation_percentage =  round((len(generated_questions) / len(original_questions)) * 100, 2)
