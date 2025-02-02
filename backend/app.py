@@ -519,6 +519,6 @@ def load_questions():
 if __name__ == '__main__':
     try:
         original_questions = load_questions()
-        app.run(debug=True, port=5001)
+        app.run(debug=True, port=8081) #this is the cloudflared configured localhost
     except ValueError as e:
         print(f"Error loading questions: {e}")
