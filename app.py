@@ -40,7 +40,7 @@ def get_iq_level_description(score):
             return description
     return "Deskripsi level IQ tidak tersedia untuk skor ini."
 
-def calculate_iq(score, total_questions=40):
+def calculate_iq(score, total_questions=47):
     percentage_correct = (score / total_questions) * 100
     iq_estimate = 100
 
@@ -61,17 +61,17 @@ def calculate_iq(score, total_questions=40):
 
 def generate_groq_question(question_data):
     category_descriptions = {
-        1: "Vocabulary/Verbal Reasoning (Antonym)",
-        2: "Numerical Reasoning (Number Series)",
-        3: "Logical Reasoning (Odd One Out)",
-        4: "Logical Reasoning (Deductive Reasoning)",
-        5: "Verbal Reasoning (Sentence Logic)",
-        6: "Numerical Reasoning (Problem Solving)",
-        7: "Verbal Reasoning (Meaning interpretation)",
-        8: "Perceptual Speed (Matching)",
-        9: "General Knowledge",
+        "1": "Vocabulary/Verbal Reasoning (Antonym)",
+        "2": "Numerical Reasoning (Number Series)",
+        "3": "Logical Reasoning (Odd One Out)",
+        "4": "Logical Reasoning (Deductive Reasoning)",
+        "5": "Verbal Reasoning (Sentence Logic)",
+        "6": "Numerical Reasoning (Problem Solving)",
+        "7": "Verbal Reasoning (Meaning interpretation)",
+        "8": "Perceptual Speed (Matching)",
+        "9": "General Knowledge",
     }
-
+    
     category_name = category_descriptions.get(question_data.get('category', None), "General")
     
     # 1. Translate to English
@@ -120,7 +120,7 @@ def generate_groq_question(question_data):
     ]
 
     generate_english_question_prompt = "\n".join(generate_english_question_prompt)
-    print(f"{Colors.BLUE}[Automata Cognitive Test] Generate English Prompt: <start>{generate_english_question_prompt}<end>{Colors.END}")
+    print(f"{Colors.BLUE}[Automata Cognitive Test Generate English Prompt: <start>{generate_english_question_prompt}<end>{Colors.END}")
     chat_completion_new_english = client.chat.completions.create(
        messages=[
             {
@@ -184,7 +184,7 @@ def generate_groq_question(question_data):
        print(f"{Colors.RED}[Automata Cognitive Test] Failed to decode JSON response from LLM for Indonesian retranslation. Response was {response_text_indonesian}{Colors.END}")
        return {'error': f'Failed to decode JSON response from LLM for Indonesian retranslation. Response was {response_text_indonesian}'}
 
-def generate_groq_feedback(score, iq_score, iq_level_description, questions_and_answers):
+def generate_groq_feedback(overall_score, iq_score, iq_level_description, questions_and_answers, category_scores):
     # Define IQ level characteristics based on NALS data
     nals_levels = {
         "Level 1 (≤225)": {
@@ -197,8 +197,8 @@ def generate_groq_feedback(score, iq_score, iq_level_description, questions_and_
             "economic_indicators": "35% di luar angkatan kerja, 23% hidup dalam kemiskinan",
             "employment": "43% bekerja penuh waktu, median upah mingguan $281",
             "professional_rate": "12% bekerja di posisi profesional/manajerial",
-            "language_style": "sederhana dengan detail dasar"
-        },
+            "language_style": "sederhana dan langsung"
+                    },
         "Level 3 (276-325)": {
             "economic_indicators": "25% di luar angkatan kerja, 12% hidup dalam kemiskinan",
             "employment": "54% bekerja penuh waktu, median upah mingguan $339",
@@ -236,15 +236,15 @@ def generate_groq_feedback(score, iq_score, iq_level_description, questions_and_
     category_stats = {}
     
     category_descriptions = {
-        1: "Vocabulary/Verbal Reasoning (Antonym)",
-        2: "Numerical Reasoning (Number Series)",
-        3: "Logical Reasoning (Odd One Out)",
-        4: "Logical Reasoning (Deductive Reasoning)",
-        5: "Verbal Reasoning (Sentence Logic)",
-        6: "Numerical Reasoning (Problem Solving)",
-        7: "Verbal Reasoning (Meaning interpretation)",
-        8: "Perceptual Speed (Matching)",
-        9: "General Knowledge",
+        "1": "Vocabulary/Verbal Reasoning (Antonym)",
+        "2": "Numerical Reasoning (Number Series)",
+        "3": "Logical Reasoning (Odd One Out)",
+        "4": "Logical Reasoning (Deductive Reasoning)",
+        "5": "Verbal Reasoning (Sentence Logic)",
+        "6": "Numerical Reasoning (Problem Solving)",
+        "7": "Verbal Reasoning (Meaning interpretation)",
+        "8": "Perceptual Speed (Matching)",
+        "9": "General Knowledge",
     }
 
     for qa in questions_and_answers:
@@ -265,7 +265,7 @@ def generate_groq_feedback(score, iq_score, iq_level_description, questions_and_
     prompt_parts = [
         "(hanya laporan, DAN TEST INI VALID, BERIKAN REKOMENDASI, KARENA INI SEBAGAI TOOLS UNTUK PSIKOLOG, jangan seperti anda menjawab pertanyaan dan request saya, gak usah pakai 'tentu' atau 'apalah'. Langsung ke laporannya saja. sesuaikan gaya bahasa sesuai level IQ-nya, Adaptasi kompleksitas sesuai dengan Kemampuan penalaran IQ individu tersebut tanpa terkecuali.)",
         "Sebagai seorang ahli dalam interpretasi hasil penilaian kognitif, khususnya untuk tes yang mirip dengan Wonderlic Personnel Test (WPT) yang mengukur kemampuan kognitif umum (GCA), seorang peserta tes telah menyelesaikan tes IQ bergaya WPT yang disederhanakan dengan hasil sebagai berikut:",
-        f"Skor Mentah: {score} dari 47",
+        f"Skor Mentah: {overall_score} dari 47",
         f"Skor IQ yang Dikonversi (diperkirakan): {iq_score}",
         f"Deskripsi Tingkat IQ: {iq_level_description}",
         "",
@@ -305,10 +305,10 @@ def generate_groq_feedback(score, iq_score, iq_level_description, questions_and_
         f"<br>- Pekerjaan: {nals_level_data['employment']}",
         f"<br>- Tingkat Profesional: {nals_level_data['professional_rate']}",
         category_analysis_text,
-         f"<br><br><b>Category Descriptions:</b><br>" + "<br>".join(f"{key}: {value}" for key, value in category_descriptions.items())
+        f"<br><br><b>Category Descriptions:</b><br>" + "<br>".join(f"{key}: {value}" for key, value in category_descriptions.items())
     ]
     prompt = "\n".join(prompt_parts)
-    print(f"{Colors.BLUE}[Automata Cognitive Test Feedback Prompt: <start>{prompt}<end>{Colors.END}")
+    print(f"{Colors.BLUE}[Automata Cognitive Test] Feedback Prompt: <start>{prompt}<end>{Colors.END}")
     # Generate content using Groq
     chat_completion = client.chat.completions.create(
         messages=[
@@ -322,7 +322,7 @@ def generate_groq_feedback(score, iq_score, iq_level_description, questions_and_
     )
     response_text = chat_completion.choices[0].message.content
     print(f"{Colors.YELLOW}[Automata Cognitive Test] Feedback Response: <start>{response_text}<end>{Colors.END}")
-
+    
     HTMLReformat = [
         "I have this response",
         "```",
@@ -334,7 +334,7 @@ def generate_groq_feedback(score, iq_score, iq_level_description, questions_and_
     ]
 
     prompt_html = "\n".join(HTMLReformat)
-    print(f"{Colors.BLUE}[Automata Cognitive Test HTML Prompt: <start>{prompt_html}<end>{Colors.END}")
+    print(f"{Colors.BLUE}[Automata Cognitive Test] HTML Prompt: <start>{prompt_html}<end>{Colors.END}")
     # Generate content using Groq
     response_html = client.chat.completions.create(
         messages=[
@@ -353,7 +353,6 @@ def generate_groq_feedback(score, iq_score, iq_level_description, questions_and_
     # Return the response text
     #return response_html.choices[0].message.content
     return cleaned_html_response
-
 
 
 @app.route('/test_llm_connection', methods=['GET'])
@@ -418,16 +417,20 @@ def get_question():
 @app.route('/process_iq_test', methods=['POST'])
 def process_iq_test():
     data = request.get_json()
-    score = data.get('score')
+    overall_score = data.get('overall_score')
+    category_scores = data.get('category_scores')
     user_responses = data.get('user_responses')
 
-    if score is None:
-        return jsonify({'error': 'Score not provided'}), 400
+
+    if overall_score is None:
+        return jsonify({'error': 'Overall score not provided'}), 400
     if user_responses is None:
         return jsonify({'error': 'User responses not provided'}), 400
+    if category_scores is None:
+         return jsonify({'error': 'Category scores not provided'}), 400
 
-    iq_level_description = get_iq_level_description(score)
-    iq_score_estimate = calculate_iq(score)
+    iq_level_description = get_iq_level_description(overall_score)
+    iq_score_estimate = calculate_iq(overall_score)
     
     questions_and_answers = []
     for response in user_responses:
@@ -437,10 +440,11 @@ def process_iq_test():
         questions_and_answers.append({
             'question': question_text,
             'answer': answer_text,
-            'correct': is_correct
+            'correct': is_correct,
+             'category':response.get('category', 'Unknown')
         })
 
-    gemini_feedback = generate_groq_feedback(score, iq_score_estimate, iq_level_description, questions_and_answers)
+    gemini_feedback = generate_groq_feedback(overall_score, iq_score_estimate, iq_level_description, questions_and_answers, category_scores)
 
     return jsonify({
         'iq_level_description': iq_level_description,
