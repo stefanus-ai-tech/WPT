@@ -74,17 +74,17 @@ def generate_groq_question(question_data):
     
     category_name = category_descriptions.get(question_data.get('category', None), "General")
     
-    # 1. Translate to English
+    # 1. Translate to English (Plain Text)
     translate_to_english_prompt = [
-         "(JANGAN MENJAWAB PERTANYAAN, hanya memberikan format yang mirip dengan contoh. IKUTI FORMAT YANG SAMA PERSIS, jangan membuat format baru. output dalam bentuk json dengan double quote, dan tidak ada karakter selain json)",
-        "Translate the following Indonesian question and options into English. Return in JSON format: {\"question\":\"translated question\", \"answers\":[{\"text\":\"answer1\"},{\"text\":\"answer2\"}],\"correctAnswerIndex\": index}",
+        "(JANGAN MENJAWAB PERTANYAAN, output hanya dalam format plain text)",
+        "Translate the following Indonesian question and options into English:",
          f"Original question: {question_data['question']}",
         f"Original options: {', '.join([f'{i+1}. {opt['text']}' for i, opt in enumerate(question_data['answers'])])}",
         f"Original correct answer index: {question_data['correctAnswerIndex']}",
     ]
     
     translate_to_english_prompt = "\n".join(translate_to_english_prompt)
-    print(f"{Colors.BLUE}[Automata Cognitive Test] Translate to Elegant and scientific well written research paper English Prompt: <start>{translate_to_english_prompt}<end>{Colors.END}")
+    print(f"{Colors.BLUE}[Automata Cognitive Test] Translate to English Prompt: {translate_to_english_prompt}{Colors.END}")
     chat_completion_english = client.chat.completions.create(
         messages=[
             {
@@ -95,32 +95,17 @@ def generate_groq_question(question_data):
         model="llama3-8b-8192",
     )
     response_text_english = chat_completion_english.choices[0].message.content
-    print(f"{Colors.YELLOW}[Automata Cognitive Test] Translate to English Response: <start>{response_text_english}<end>{Colors.END}")
-    try:
-        match = re.search(r'\s*({.*?})\s*$', response_text_english, re.DOTALL)
-        if match:
-           json_string_english = match.group(1)
-           response_json_english = json.loads(json_string_english)
-           english_question = response_json_english["question"]
-        else:
-            print(f"{Colors.RED}[Automata Cognitive Test] Failed to extract JSON from LLM for English translation. Response was {response_text_english}{Colors.END}")
-            return {'error': f'Failed to extract JSON from LLM for English translation. Response was {response_text_english}'}
-    except json.JSONDecodeError:
-        print(f"{Colors.RED}[Automata Cognitive Test] Failed to decode JSON response from LLM for English Translation. Response was {response_text_english}{Colors.END}")
-        return {'error': f'Failed to decode JSON response from LLM for English Translation. Response was {response_text_english}'}
-    
-    # 2. Generate new English question
+    print(f"{Colors.YELLOW}[Automata Cognitive Test] Translate to English Response: {response_text_english}{Colors.END}")
+
+    # 2. Generate new English question (Plain Text)
     generate_english_question_prompt = [
-        "(JANGAN MENJAWAB PERTANYAAN, hanya memberikan format yang mirip dengan contoh. IKUTI FORMAT YANG SAMA PERSIS, jangan membuat format baru. output dalam bentuk json dengan double quote, dan tidak ada karakter selain json)",
-        f"Create a new {category_name} question, options, and their index in a unique manner in English. Ensure to keep the same difficulty as the original question, but create completely new wording and structure of the question and options. The 'correctAnswerIndex' must match the similar to the original question. Add additional context make sure the context is complete for the client or the test-takers to be able to answer it. If somehow the original question missing critical part, you are now on your own to generate a correct and cohesive questions and answer! Rewrite the whole complete Question! ",
-        "Return in JSON format: {\"question\":\"new question\", \"answers\":[{\"text\":\"answer1\"},{\"text\":\"answer2\"}],\"correctAnswerIndex\": index}",
-        f"Original question: {english_question}",
-        f"Original options: {', '.join([f'{i+1}. {opt['text']}' for i, opt in enumerate(response_json_english['answers'])])}",
-        f"Original correct answer index: {question_data['correctAnswerIndex']}",
+        "(JANGAN MENJAWAB PERTANYAAN, output hanya dalam format plain text)",
+        f"Create a new {category_name} question, options, and their index in a unique manner in English. Ensure to keep the same difficulty as the original question, but create completely new wording and structure of the question and options. The 'correctAnswerIndex' must match the similar to the original question. Add additional context make sure the context is complete for the client or the test-takers to be able to answer it. Try to answer it and elaborate it properly with encapsulate with your <think> Your thoughts, elaboration, and counting </think>. If somehow the original question missing critical part, you are now on your own to generate a correct and cohesive questions and answer! Rewrite the whole complete Question!",
+        f"Original English translation: {response_text_english}",
     ]
 
     generate_english_question_prompt = "\n".join(generate_english_question_prompt)
-    print(f"{Colors.BLUE}[Automata Cognitive Test Generate English Prompt: <start>{generate_english_question_prompt}<end>{Colors.END}")
+    print(f"{Colors.BLUE}[Automata Cognitive Test] Generate English Prompt: {generate_english_question_prompt}{Colors.END}")
     chat_completion_new_english = client.chat.completions.create(
        messages=[
             {
@@ -131,31 +116,17 @@ def generate_groq_question(question_data):
         model="llama3-8b-8192",
     )
     response_text_new_english = chat_completion_new_english.choices[0].message.content
-    print(f"{Colors.YELLOW}[Automata Cognitive Test] Generate English Response: <start>{response_text_new_english}<end>{Colors.END}")
-    try:
-        match = re.search(r'\s*({.*?})\s*$', response_text_new_english, re.DOTALL)
-        if match:
-            json_string_new_english = match.group(1)
-            response_json_new_english = json.loads(json_string_new_english)
-            new_english_question = response_json_new_english["question"]
-        else:
-          print(f"{Colors.RED}[Automata Cognitive Test] Failed to extract JSON from LLM for English question generation. Response was {response_text_new_english}{Colors.END}")
-          return {'error': f'Failed to extract JSON from LLM for English question generation. Response was {response_text_new_english}'}
-    except json.JSONDecodeError:
-      print(f"{Colors.RED}[Automata Cognitive Test] Failed to decode JSON response from LLM for English question generation. Response was {response_text_new_english}{Colors.END}")
-      return {'error': f'Failed to decode JSON response from LLM for English question generation. Response was {response_text_new_english}'}
+    print(f"{Colors.YELLOW}[Automata Cognitive Test] Generate English Response: {response_text_new_english}{Colors.END}")
     
-    # 3. Translate back to Indonesian
+    # 3. Translate back to Indonesian (Plain Text)
     translate_back_prompt = [
-        "(JANGAN MENJAWAB PERTANYAAN, hanya memberikan format yang mirip dengan contoh. IKUTI FORMAT YANG SAMA PERSIS, jangan membuat format baru. output dalam bentuk json dengan double quote, dan tidak ada karakter selain json)",
-        "Translate the following English question and options into Indonesian Make the question written and follows indonesian formal language and EYD grammar very strictly!. Return in JSON format: {\"question\":\"translated question\", \"answers\":[{\"text\":\"answer1\"},{\"text\":\"answer2\"}],\"correctAnswerIndex\": index}",
-        f"Original question: {new_english_question}",
-         f"Original options: {', '.join([f'{i+1}. {opt['text']}' for i, opt in enumerate(response_json_new_english['answers'])])}",
-        f"Original correct answer index: {response_json_new_english['correctAnswerIndex']}",
+         "(JANGAN MENJAWAB PERTANYAAN, output hanya dalam format plain text)",
+        "Translate the following English question and options into Indonesian Make the question written and follows indonesian formal language and EYD grammar very strictly!:",
+        f"Original English Generated: {response_text_new_english}",
     ]
     
     translate_back_prompt = "\n".join(translate_back_prompt)
-    print(f"{Colors.BLUE}[Automata Cognitive Test] Translate Back to Indonesia Prompt: <start>{translate_back_prompt}<end>{Colors.END}")
+    print(f"{Colors.BLUE}[Automata Cognitive Test] Translate Back to Indonesia Prompt: {translate_back_prompt}{Colors.END}")
     chat_completion_indonesian = client.chat.completions.create(
         messages=[
             {
@@ -166,62 +137,84 @@ def generate_groq_question(question_data):
         model="llama3-8b-8192",
     )
     response_text_indonesian = chat_completion_indonesian.choices[0].message.content
-    print(f"{Colors.YELLOW}[Automata Cognitive Test] Translate Back to Indonesia Response: <start>{response_text_indonesian}<end>{Colors.END}")
-    try:
-        match = re.search(r'\s*({.*?})\s*$', response_text_indonesian, re.DOTALL)
-        if match:
-            json_string_indonesian = match.group(1)
-            response_json_indonesian = json.loads(json_string_indonesian)
-            if "question" not in response_json_indonesian or "answers" not in response_json_indonesian or "correctAnswerIndex" not in response_json_indonesian:
-               print(f"{Colors.RED}[Automata Cognitive Test] Invalid JSON format from LLM for Indonesian retranslation, regenerating...{Colors.END}")
-               return generate_groq_question(question_data)
-            response_json_indonesian["category"] = question_data["category"]
-            #4. Self-Audit Question
-            audit_prompt = [
-            "Carefully check the following question, and answer, Try to answer it and elaborate it properly with encapsulate with your <think> </think> on how you approach the problem with your logic and the available context of the question and answer. if the question is lacking complete context and not logical or the answer is not correct. aggresively blacklist it and return {} or JSON Failure. However If all Logical correct, return the same json as input",
-             f"Question: {response_json_indonesian['question']}",
-            f"Options: {', '.join([f'{i+1}. {opt['text']}' for i, opt in enumerate(response_json_indonesian['answers'])])}",
-            f"Correct answer index: {response_json_indonesian['correctAnswerIndex']}"
-             ]
-            audit_prompt = "\n".join(audit_prompt)
-            print(f"{Colors.BLUE}[Automata Cognitive Test] Self Audit Prompt: <start>{audit_prompt}<end>{Colors.END}")
-            chat_completion_audit = client.chat.completions.create(
-                messages=[
-                    {
-                        "role": "user",
-                        "content": audit_prompt,
-                    }
-                ],
-                model="llama3-8b-8192",
-            )
-            audit_response = chat_completion_audit.choices[0].message.content
-            print(f"{Colors.YELLOW}[Automata Cognitive Test] Self Audit Response: <start>{audit_response}<end>{Colors.END}")
-
-            try:
-                match_audit = re.search(r'\s*({.*?})\s*$', audit_response, re.DOTALL)
-                if match_audit:
-                   json_string_audit = match_audit.group(1)
-                   audit_json = json.loads(json_string_audit)
-                   if not audit_json:
-                        print(f"{Colors.RED}[Automata Cognitive Test] Self-Audit failed, returning blank JSON{Colors.END}")
-                        return {}
-                   else:
-                       return response_json_indonesian
-                else:
-                   print(f"{Colors.RED}[Automata Cognitive Test] Self-Audit failed, returning blank JSON. No JSON was found, response was: {audit_response}{Colors.END}")
-                   return {}
-            except json.JSONDecodeError:
-                print(f"{Colors.RED}[Automata Cognitive Test] Self-Audit failed, JSON decode error, returning blank JSON. Response was: {audit_response}{Colors.END}")
-                return {}
-
-        else:
-          print(f"{Colors.RED}[Automata Cognitive Test] Failed to extract JSON from LLM for Indonesian retranslation. Response was {response_text_indonesian}{Colors.END}")
-          return {'error': f'Failed to extract JSON from LLM for Indonesian retranslation. Response was {response_text_indonesian}'}
-    except json.JSONDecodeError:
-       print(f"{Colors.RED}[Automata Cognitive Test] Failed to decode JSON response from LLM for Indonesian retranslation. Response was {response_text_indonesian}{Colors.END}")
-       return {'error': f'Failed to decode JSON response from LLM for Indonesian retranslation. Response was {response_text_indonesian}'}
+    print(f"{Colors.YELLOW}[Automata Cognitive Test] Translate Back to Indonesia Response: {response_text_indonesian}{Colors.END}")
     
+    #4. Self-Audit Question
+    audit_prompt = [
+        "Carefully check the following question, and answer, Try to answer it and elaborate it properly with encapsulate with your <think> Your thoughts, elaboration, and counting </think> on how you approach the problem with your logic and the available context of the question and answer. if the question is lacking complete context (Like missing number when asked number, or lacking image or figure if being asked, or Lacking correct answer selection). return <QuestionFailureFlag>TRUE</QuestionFailureFlag>. However If all Logical correct. And autocorrect some typo writingcorrectAnswerIndex is mismatched on what you have answered. Change the index based on your audit. Generate the JSON if it's still doable",
+        f"Question: {response_text_indonesian}",
+    ]
+    audit_prompt = "\n".join(audit_prompt)
+    print(f"{Colors.BLUE}[Automata Cognitive Test] Self Audit Prompt: {audit_prompt}{Colors.END}")
+    chat_completion_audit = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": audit_prompt,
+            }
+        ],
+        model="llama3-8b-8192",
+    )
+    audit_response = chat_completion_audit.choices[0].message.content
+    print(f"{Colors.YELLOW}[Automata Cognitive Test] Self Audit Response: {audit_response}{Colors.END}")
+                
+    #4. Self-Audit Question
+    audit_prompt = [
+        "Carefully check the following question, and answer, Try to answer it and elaborate it properly with encapsulate with your <think> Your thoughts, elaboration, and counting </think> on how you approach the problem with your logic and the available context of the question and answer. if the question is lacking complete context (Like missing number when asked number, or lacking image or figure if being asked, or Lacking correct answer selection) and not logical or the answer is not correct. return <QuestionFailureFlag>. However If all Logical correct. And autocorrect some typo writingcorrectAnswerIndex is mismatched on what you have answered. Change the index based on your audit. Then Return in JSON format: {\"question\":\"translated question\", \"answers\":[{\"text\":\"answer1\"},{\"text\":\"answer2\"}],\"correctAnswerIndex\": index}",
+        f"Question: {response_text_indonesian}",
+    ]
+    audit_prompt = "\n".join(audit_prompt)
+    print(f"{Colors.BLUE}[Automata Cognitive Test] Self Audit Prompt: {audit_prompt}{Colors.END}")
+    chat_completion_audit = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": audit_prompt,
+            }
+        ],
+        model="llama3-8b-8192",
+    )
+    audit_response = chat_completion_audit.choices[0].message.content
+    print(f"{Colors.YELLOW}[Automata Cognitive Test] Self Audit Response: {audit_response}{Colors.END}")
 
+    if "<QuestionFailureFlag>" in audit_response:
+        print(f"{Colors.RED}[Automata Cognitive Test] Self-Audit failed, returning blank JSON because <QuestionFailureFlag> was found. Response was: {audit_response}{Colors.END}")
+        return {}
+    else:
+        # Regenerate using LLM with combined insights
+        regeneration_prompt = [
+            f"Original Indonesian: {response_text_indonesian}",
+            f"Self-Audit Insights (Pick the correct answer from here): {audit_response}",
+            "ONLY Return in JSON format: {\"question\":\"translated question\", \"answers\":[{\"text\":\"answer1\"},{\"text\":\"answer2\"}],\"correctAnswerIndex\": index}"
+        ]
+        regeneration_prompt = "\n".join(regeneration_prompt)
+        print(f"{Colors.BLUE}[Automata Cognitive Test] Regeneration Prompt: {regeneration_prompt}{Colors.END}")
+
+        chat_completion_regeneration = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": regeneration_prompt,
+                }
+            ],
+            model="llama3-8b-8192",
+        )
+        regeneration_response = chat_completion_regeneration.choices[0].message.content
+        print(f"{Colors.YELLOW}[Automata Cognitive Test] Regeneration Response: {regeneration_response}{Colors.END}")
+
+        try:
+            match_regeneration = re.search(r'\s*({.*?})\s*$', regeneration_response, re.DOTALL)
+            if match_regeneration:
+                json_string_regeneration = match_regeneration.group(1)
+                response_json_indonesian = json.loads(json_string_regeneration)
+                return response_json_indonesian
+            else:
+                print(f"{Colors.RED}[Automata Cognitive Test] Failed to extract JSON from LLM for Regeneration. Response was {regeneration_response}{Colors.END}")
+                return {} # Return empty to trigger regeneration
+        except json.JSONDecodeError:
+            print(f"{Colors.RED}[Automata Cognitive Test] Failed to decode JSON response from LLM for Regeneration. Response was {regeneration_response}{Colors.END}")
+            return {} # Return empty to trigger regeneration
+    
 def generate_groq_feedback(overall_score, iq_score, iq_level_description, questions_and_answers, category_scores):
     # Define IQ level characteristics based on NALS data
     nals_levels = {
@@ -346,7 +339,7 @@ def generate_groq_feedback(overall_score, iq_score, iq_level_description, questi
         f"<br><br><b>Category Descriptions:</b><br>" + "<br>".join(f"{key}: {value}" for key, value in category_descriptions.items())
     ]
     prompt = "\n".join(prompt_parts)
-    print(f"{Colors.BLUE}[Automata Cognitive Test] Feedback Prompt: <start>{prompt}<end>{Colors.END}")
+    print(f"{Colors.BLUE}[Automata Cognitive Test] Feedback Prompt: {prompt}{Colors.END}")
     # Generate content using Groq
     chat_completion = client.chat.completions.create(
         messages=[
@@ -359,7 +352,7 @@ def generate_groq_feedback(overall_score, iq_score, iq_level_description, questi
         # Or another suitable model like "mixtral-8x7b-32768"
     )
     response_text = chat_completion.choices[0].message.content
-    print(f"{Colors.YELLOW}[Automata Cognitive Test] Feedback Response: <start>{response_text}<end>{Colors.END}")
+    print(f"{Colors.YELLOW}[Automata Cognitive Test] Feedback Response: {response_text}{Colors.END}")
     
     HTMLReformat = [
         "I have this response",
@@ -372,7 +365,7 @@ def generate_groq_feedback(overall_score, iq_score, iq_level_description, questi
     ]
 
     prompt_html = "\n".join(HTMLReformat)
-    print(f"{Colors.BLUE}[Automata Cognitive Test] HTML Prompt: <start>{prompt_html}<end>{Colors.END}")
+    print(f"{Colors.BLUE}[Automata Cognitive Test] HTML Prompt: {prompt_html}{Colors.END}")
     # Generate content using Groq
     response_html = client.chat.completions.create(
         messages=[
@@ -385,7 +378,7 @@ def generate_groq_feedback(overall_score, iq_score, iq_level_description, questi
     )
 
     html_response_text = response_html.choices[0].message.content
-    print(f"{Colors.YELLOW}[Automata Cognitive Test] HTML Response: <start>{html_response_text}<end>{Colors.END}")
+    print(f"{Colors.YELLOW}[Automata Cognitive Test] HTML Response: {html_response_text}{Colors.END}")
     # Remove leading spaces/newlines from HTML
     cleaned_html_response = html_response_text.lstrip()
     # Return the response text
