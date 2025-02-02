@@ -19,7 +19,7 @@
   --shadow-color: rgba(0, 0, 0, 0.4);
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* { margin: 0; padding: 0; box-sizing: border-box; scroll-behavior: smooth; }
 
 @keyframes grain {
   0%, 100% { transform: translate(0, 0) }
@@ -133,6 +133,9 @@ body::after {
   z-index: 2;
   margin: 2rem auto;
   overflow: hidden;
+  max-height: 90vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .container::after {
@@ -654,15 +657,45 @@ body.show-result .progress-bar {
 }
 
 @media (max-width: 768px) {
+  body {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
   .container {
+    height: 90vh;
+    margin: 1rem auto;
+    padding: 1.5rem 1rem;
     width: 95%;
-    padding: 1.5rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
-  
+
+  #question-container {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   #answer-buttons {
-    grid-template-columns: 1fr;
+    overflow-y: auto;
+    max-height: 50vh;
+    padding-bottom: 1rem;
   }
-  
+
+  .footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+  }
+
+  #dynamic-container {
+    padding-bottom: 60px;
+  }
+
   h1 {
     font-size: 1.5em;
   }
@@ -685,4 +718,22 @@ body.show-result .progress-bar {
   .radio-group label {
     padding: 0.5rem 0.75rem;
   }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-tertiary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-secondary);
 }

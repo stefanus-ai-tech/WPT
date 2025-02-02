@@ -26,15 +26,23 @@ app = Flask(__name__)
 # Update CORS configuration for all routes
 CORS(app, resources={
     r"/*": {
-        "origins": ["https://wpt-iqtest.netlify.app", "http://localhost:3000"],
+        "origins": [
+            "https://wpt-iqtest.netlify.app", 
+            "http://localhost:3000",
+            "http://localhost:5000",  # Added localhost:5000
+            "http://127.0.0.1:5000"   # Added 127.0.0.1:5000
+        ],
         "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type"]
+        "allow_headers": ["Content-Type", "Authorization"],
+        "expose_headers": ["Content-Type"],
+        "supports_credentials": True
     }
 })
 
-# Add OPTIONS route handler for preflight requests
-@app.route('/process_iq_test', methods=['OPTIONS'])
-def handle_options():
+# Add OPTIONS route handler for all routes
+@app.route('/', defaults={'path': ''}, methods=['OPTIONS'])
+@app.route('/<path:path>', methods=['OPTIONS'])
+def handle_options(path):
     response = app.make_default_options_response()
     return response
 
@@ -430,13 +438,21 @@ original_questions = []
 
 @app.route('/get_question', methods=['POST'])
 def get_question():
+    print(f"{Colors.BLUE}[Automata Cognitive Test] Received GET_QUESTION request{Colors.END}")
     global generated_questions, generation_percentage
     data = request.get_json()
-    if not data or 'question_index' not in data:
-        return jsonify({'error': 'Invalid request'}), 400
+    
+    if not data:
+        print(f"{Colors.RED}[Automata Cognitive Test] No data received in request{Colors.END}")
+        return jsonify({'error': 'No data received'}), 400
+        
+    if 'question_index' not in data:
+        print(f"{Colors.RED}[Automata Cognitive Test] No question_index in data{Colors.END}")
+        return jsonify({'error': 'Invalid request - missing question_index'}), 400
 
     question_index = data['question_index']
-
+    print(f"{Colors.BLUE}[Automata Cognitive Test] Processing question index: {question_index}{Colors.END}")
+    
     if question_index not in generated_questions:
         # Generate a new question using Groq
         if question_index < len(original_questions):
@@ -505,7 +521,17 @@ def serve_index():
 
 @app.route('/<path:filename>')
 def serve_static(filename):
-    return send_file(filename)
+    try:
+        return send_file(filename)
+    except FileNotFoundError:
+        # Return a 404 response for missing files
+        return '', 404
+
+# Add specific handler for favicon.ico
+@app.route('/favicon.ico')
+def favicon():
+    # Return a 204 No Content response for favicon requests
+    return '', 204
 
 # Load questions from questions.json as JSON
 def load_questions():

@@ -165,7 +165,11 @@ const fetchNewQuestion = async () => {
     try {
         const response = await fetch(`${currentConfig.baseUrl}/get_question`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            credentials: 'include',
             body: JSON.stringify({ question_index: shuffledQuestionIndices[currentQuestionIndex] }),
         });
 
