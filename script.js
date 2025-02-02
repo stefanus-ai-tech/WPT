@@ -7,7 +7,9 @@ const prevButton = document.getElementById('prev-button');
 const questionContainerElement = document.getElementById('question-container');
 const questionElement = document.getElementById('question');
 const answerButtonsElement = document.getElementById('answer-buttons');
-const resultContainerElement = document.getElementById('result-container');
+const dynamicContainer = document.getElementById('dynamic-container');
+const analysisContent = document.getElementById('analysis-content');
+const resultContent = document.getElementById('result-content');
 const iqScoreElement = document.getElementById('iq-score');
 const iqLevelElement = document.getElementById('iq-level');
 const timerElement = document.getElementById('time');
@@ -134,8 +136,9 @@ document.querySelector('.modal-overlay').addEventListener('click', () => {
 function startTest() {
   // Hide all containers first
   document.getElementById('test-container').classList.remove('hide');
-  resultContainerElement.classList.add('hide');
-  document.getElementById('analysis-container').classList.add('hide');
+  dynamicContainer.classList.add('hide');
+  analysisContent.classList.add('hide');
+  resultContent.classList.add('hide');
   
   // Initialize test
   startButton.classList.add('hide');
@@ -260,10 +263,62 @@ function formatTime(timeInSeconds) {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
+function hideTestElements() {
+  const testElements = [
+    document.getElementById('test-container'),
+    document.getElementById('progress-info'),
+    questionContainerElement,
+    answerButtonsElement,
+    document.querySelector('.navigation-controls'),
+    document.querySelector('.progress-bar'),
+    questionElement
+  ];
+  
+  // Remove show class from progress elements
+  document.getElementById('progress-info').classList.remove('show');
+  questionContainerElement.classList.remove('show');
+  
+  testElements.forEach(el => {
+    if (el) {
+      el.style.opacity = '0';
+      el.classList.add('hide');
+      setTimeout(() => {
+        el.style.display = 'none';
+        el.style.opacity = '';
+      }, 300);
+    }
+  });
+}
+
+function showContent(contentElement) {
+  // First hide all test elements
+  hideTestElements();
+
+  // Hide all dynamic content first
+  [analysisContent, resultContent].forEach(el => {
+    if (!el.classList.contains('hide')) {
+      el.classList.add('hide');
+      el.style.display = 'none';
+    }
+  });
+  
+  // Show the dynamic container immediately
+  dynamicContainer.style.display = 'block';
+  dynamicContainer.classList.remove('hide');
+  
+  // Show the requested content
+  contentElement.style.display = 'block';
+  contentElement.classList.remove('hide');
+  
+  // Force a reflow to ensure the transition works
+  contentElement.offsetHeight;
+  contentElement.style.opacity = '1';
+}
+
 function endTest() {
   clearInterval(timerInterval);
-  document.getElementById('test-container').classList.add('hide');
-  document.getElementById('analysis-container').classList.remove('hide');
+  hideTestElements();
+  showContent(analysisContent);
   processResults();
 }
 
@@ -273,7 +328,8 @@ function processResults() {
   const emulationNote = mode !== 'normal' ? 
     `<p class="emulation-note">(Emulated ${mode} IQ test results)</p>` : '';
 
-  iqScoreElement.innerText = `Your Score: ${score} out of ${questions.length}`;
+  //iqScoreElement.innerText = `Your Score: ${score} out of ${questions.length}`;
+  iqScoreElement.innerText = `Your Benchmark Performance Score is ${iq}`;
   iqScoreElement.innerHTML += emulationNote;
 
   const userResponses = shuffledQuestions.map((question, index) => ({
@@ -294,8 +350,7 @@ function processResults() {
   })
   .then(response => response.json())
   .then(data => {
-    document.getElementById('analysis-container').classList.add('hide');
-    resultContainerElement.classList.remove('hide');
+    showContent(resultContent);
     document.body.classList.add('show-result');
     iqLevelElement.innerHTML = `
       <h3>IQ Level: ${data.iq_level_description}</h3>
@@ -305,8 +360,7 @@ function processResults() {
     `;
   })
   .catch(error => {
-    document.getElementById('analysis-container').classList.add('hide');
-    resultContainerElement.classList.remove('hide');
+    showContent(resultContent);
     document.body.classList.add('show-result');
     console.error('Error sending score to server:', error);
     iqLevelElement.innerHTML = `
@@ -384,10 +438,27 @@ function autoAnswerQuestions(emulatedAnswers) {
   endTest();
 }
 
+function resetState() {
+  // Reset all state variables
+  shuffledQuestions = null;
+  currentQuestionIndex = 0;
+  score = 0;
+  timeLeft = 2700;
+  userAnswers = [];
+  
+  // Clear any existing intervals
+  if (timerInterval) {
+    clearInterval(timerInterval);
+  }
+}
+
 function restartTest() {
-  document.getElementById('analysis-container').classList.add('hide');
-  resultContainerElement.classList.add('hide');
-  document.getElementById('test-container').classList.remove('hide');
+  dynamicContainer.classList.add('hide');
+  setTimeout(() => {
+    analysisContent.classList.add('hide');
+    resultContent.classList.add('hide');
+    document.getElementById('test-container').classList.remove('hide');
+  }, 300);
   document.body.classList.remove('show-result');
   startButton.classList.remove('hide');
   questionElement.classList.remove('show');

@@ -23,11 +23,11 @@
 
 @keyframes grain {
   0%, 100% { transform: translate(0, 0) }
-  10% { transform: translate(-5%, -10%) }
-  30% { transform: translate(3%, -15%) }
-  50% { transform: translate(-10%, 5%) }
+  10% { transform: translate(-5%, -4%) }
+  30% { transform: translate(3%, -2%) }
+  50% { transform: translate(-2%, 5%) }
   70% { transform: translate(7%, -2%) }
-  90% { transform: translate(-3%, 10%) }
+  90% { transform: translate(-3%, 3%) }
 }
 
 body {
@@ -409,7 +409,19 @@ h3 .material-icons {
   filter: brightness(1.1);
 }
 
-.hide { display: none; }
+.hide { 
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s var(--transition-timing), visibility 0.3s var(--transition-timing);
+  display: none;
+}
+
+.show {
+  opacity: 1;
+  visibility: visible;
+  display: block;
+  transition: opacity 0.3s var(--transition-timing), visibility 0.3s var(--transition-timing);
+}
 
 /* Spotlight effect for result container */
 body.show-result::before {
@@ -422,26 +434,40 @@ body.show-result::before {
   transform: none;
 }
 
-#result-container {
+#dynamic-container {
+  width: 100%;
+  opacity: 1;
   display: none;
-  padding: 2.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
-  margin-top: 1.875rem;
-  max-height: 85vh;
-  overflow-y: auto;
-  flex-direction: column;
-  align-items: center;
-  background: var(--color-background);
-  box-shadow: 
-    0 0 100px rgba(255, 255, 255, 0.2),
-    0 4px 12px var(--shadow-color);
-  position: relative;
-  z-index: 10;
 }
 
-#result-container.show {
-  display: flex;
+#dynamic-container:not(.hide) {
+  display: block;
+}
+
+#analysis-content,
+#result-content {
+  width: 100%;
+  padding: 2rem;
+  border-radius: 20px;
+  background: var(--color-background);
+  box-shadow: 0 4px 12px var(--shadow-color);
+  display: none;
+  opacity: 0;
+  transition: opacity 0.3s var(--transition-timing);
+}
+
+#analysis-content:not(.hide),
+#result-content:not(.hide) {
+  display: block;
+  opacity: 1;
+}
+
+/* Hide test elements when showing results */
+body.show-result #progress-info,
+body.show-result #question-container,
+body.show-result .navigation-controls,
+body.show-result .progress-bar {
+  display: none !important;
 }
 
 #iq-score { 

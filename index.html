@@ -85,35 +85,37 @@
           </button>
         </div>
       </div>
-    </div>
-    <!-- Analysis Container -->
-    <div id="analysis-container" class="hide">
-      <h1>
-        <span class="material-icons">analytics</span>
-        Analyzing Results
-      </h1>
-      <div id="loading-indicator">
-        <div class="spinner"></div>
-        <p>
-          <span class="material-icons">auto_awesome</span>
-          Please wait while we analyze your test results...
-        </p>
+      <!-- Dynamic Content Container -->
+      <div id="dynamic-container" class="hide">
+      <!-- Analysis Content -->
+      <div id="analysis-content" class="hide">
+        <h1>
+          <span class="material-icons">analytics</span>
+          Analyzing Results
+        </h1>
+        <div id="loading-indicator">
+          <div class="spinner"></div>
+          <p>
+            <span class="material-icons">auto_awesome</span>
+            Please wait while we analyze your test results...
+          </p>
+        </div>
+      </div>
+      <!-- Result Content -->
+      <div id="result-content" class="hide">
+        <h2>
+          <span class="material-icons">psychology</span>
+          Your Assessment Results
+        </h2>
+        <p id="iq-score"></p>
+        <div id="iq-level"></div>
+        <button id="restart-button" class="primary-button">
+          <span class="material-icons">replay</span>
+          Take Test Again
+        </button>
+      </div>
       </div>
     </div>
-    <!-- Result Container -->
-    <div id="result-container" class="hide">
-      <h2>
-        <span class="material-icons">psychology</span>
-        Your Assessment Results
-      </h2>
-      <p id="iq-score"></p>
-      <div id="iq-level"></div>
-      <button id="restart-button" class="primary-button">
-        <span class="material-icons">replay</span>
-        Take Test Again
-      </button>
-    </div>
-  </div>
   <script src="questions.js" type="module"></script>
   <script src="script.js" type="module"></script>
 </body>
