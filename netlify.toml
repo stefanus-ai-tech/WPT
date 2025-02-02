@@ -1,6 +1,27 @@
 [build]
+  command = "pip install -r requirements.txt"
   publish = "."
-  command = ""
 
 [build.environment]
-  BACKEND_URL = "https://wpt.stefanusadri.my.id" 
+  PYTHON_VERSION = "3.11"
+
+[[redirects]]
+  from = "/*"
+  to = "/app.py"
+  status = 200
+  force = true
+
+[build.processing]
+  skip_processing = false
+
+[build.processing.python]
+  runtime = "python3.11"
+  entrypoint = "app.py"
+
+[context.production.environment]
+  FLASK_ENV = "production"
+  FLASK_APP = "app.py"
+
+[dev]
+  command = "python app.py"
+  targetPort = 5001 

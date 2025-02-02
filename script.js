@@ -33,16 +33,6 @@ questionCategories.forEach(category => {
     score[category] = 0;
 });
 
-// Add this near the top of the file
-function getBaseUrl() {
-    // For development environments, you might want to override with a specific URL
-    if (process.env.NODE_ENV === 'development') {
-        return 'http://localhost:5001';
-    }
-    // Otherwise use the current origin
-    return window.location.origin;
-}
-
 // --- Helper Functions ---
 function updateProgressBar() {
     const progress = ((currentQuestionIndex + 1) / shuffledQuestionIndices.length) * 100;
