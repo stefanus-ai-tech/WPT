@@ -8,6 +8,9 @@ import json
 import random
 import re
 
+
+llm_model = "llama-3.3-70b-versatile"
+
 load_dotenv()
 
 # ANSI escape codes for colors
@@ -114,7 +117,7 @@ def generate_groq_question(question_data):
                 "content": translate_to_english_prompt,
             }
         ],
-        model="llama3-8b-8192",
+        model=llm_model,
     )
     response_text_english = chat_completion_english.choices[0].message.content
     print(f"{Colors.YELLOW}[Automata Cognitive Test] Translate to English Response: {response_text_english}{Colors.END}")
@@ -135,7 +138,7 @@ def generate_groq_question(question_data):
                 "content": generate_english_question_prompt,
             }
         ],
-        model="llama3-8b-8192",
+        model=llm_model,
     )
     response_text_new_english = chat_completion_new_english.choices[0].message.content
     print(f"{Colors.YELLOW}[Automata Cognitive Test] Generate English Response: {response_text_new_english}{Colors.END}")
@@ -156,7 +159,7 @@ def generate_groq_question(question_data):
                 "content": translate_back_prompt,
             }
         ],
-        model="llama3-8b-8192",
+        model=llm_model,
     )
     response_text_indonesian = chat_completion_indonesian.choices[0].message.content
     print(f"{Colors.YELLOW}[Automata Cognitive Test] Translate Back to Indonesia Response: {response_text_indonesian}{Colors.END}")
@@ -175,7 +178,7 @@ def generate_groq_question(question_data):
                 "content": audit_prompt,
             }
         ],
-        model="llama3-8b-8192",
+        model=llm_model,
     )
     audit_response = chat_completion_audit.choices[0].message.content
     print(f"{Colors.YELLOW}[Automata Cognitive Test] Self Audit Response: {audit_response}{Colors.END}")
@@ -194,7 +197,7 @@ def generate_groq_question(question_data):
                 "content": audit_prompt,
             }
         ],
-        model="llama3-8b-8192",
+        model=llm_model,
     )
     audit_response = chat_completion_audit.choices[0].message.content
     print(f"{Colors.YELLOW}[Automata Cognitive Test] Self Audit Response: {audit_response}{Colors.END}")
@@ -219,7 +222,7 @@ def generate_groq_question(question_data):
                     "content": regeneration_prompt,
                 }
             ],
-            model="llama3-8b-8192",
+            model=llm_model,
         )
         regeneration_response = chat_completion_regeneration.choices[0].message.content
         print(f"{Colors.YELLOW}[Automata Cognitive Test] Regeneration Response: {regeneration_response}{Colors.END}")
@@ -370,7 +373,7 @@ def generate_groq_feedback(overall_score, iq_score, iq_level_description, questi
                 "content": prompt,
             }
         ],
-        model="llama3-8b-8192",  # Or another suitable model like "mixtral-8x
+        model=llm_model,  # Or another suitable model like "mixtral-8x
         # Or another suitable model like "mixtral-8x7b-32768"
     )
     response_text = chat_completion.choices[0].message.content
@@ -396,7 +399,7 @@ def generate_groq_feedback(overall_score, iq_score, iq_level_description, questi
                 "content": prompt_html,
             }
         ],
-        model="llama3-8b-8192",  # Or another suitable model like "mixtral-8x7b-32768"
+        model=llm_model,  # Or another suitable model like "mixtral-8x7b-32768"
     )
 
     html_response_text = response_html.choices[0].message.content
@@ -419,7 +422,7 @@ def test_llm_connection():
                     "content": "This is a test.",
                 }
             ],
-            model="llama3-8b-8192",
+            model=llm_model,
         )
         response_text = chat_completion.choices[0].message.content
 
