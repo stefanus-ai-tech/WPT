@@ -22,7 +22,21 @@ class Colors:
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+
+# Update CORS configuration to be more specific
+CORS(app, resources={
+    r"/process_iq_test": {
+        "origins": ["https://wpt-iqtest.netlify.app", "http://localhost:3000"],
+        "methods": ["POST", "OPTIONS"],
+        "allow_headers": ["Content-Type"]
+    }
+})
+
+# Add OPTIONS route handler for preflight requests
+@app.route('/process_iq_test', methods=['OPTIONS'])
+def handle_options():
+    response = app.make_default_options_response()
+    return response
 
 iq_interpretation = {
     range(0, 13): "Umumnya untuk tenaga kerja pabrik atau kuli angkut",

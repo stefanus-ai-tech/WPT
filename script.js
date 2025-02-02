@@ -450,7 +450,8 @@ function processResults() {
     fetch('http://127.0.0.1:5001/process_iq_test', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
         },
         body: JSON.stringify({
             overall_score: overallScore,
