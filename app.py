@@ -1,12 +1,18 @@
 import os
 import time
-import google.generativeai as genai
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from dotenv import load_dotenv
+from groq import Groq
+
 
 load_dotenv()
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+#genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+
+
+# Initialize Groq client
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -47,8 +53,8 @@ def calculate_iq(score, total_questions=40):
     return round(iq_estimate)
 
 
-def generate_gemini_feedback(score, iq_score, iq_level_description, questions_and_answers):
-    model = genai.GenerativeModel("gemini-exp-1206")
+def generate_groq_feedback(score, iq_score, iq_level_description, questions_and_answers):
+
 
     # Define IQ level characteristics based on NALS data
     nals_levels = {
@@ -125,9 +131,9 @@ def generate_gemini_feedback(score, iq_score, iq_level_description, questions_an
         "Buatlah laporan umpan balik yang komprehensif dan berwawasan tentang keterampilan kognitif peserta tes, mencakup:",
         "1. <b>Interpretasi Skor:</b> Analisis skor dalam konteks kemampuan kognitif",
         "2. <b>Analisis GCA:</b> Kaitan dengan potensi kinerja dan pembelajaran",
-        "3. <b>Rekomendasi Pengembangan:</b> Saran berbasis growth mindset sesuai level kognitif",
+        "3. <b>Rekomendasi Strategi Kedepan:</b> Saran berbasis growth mindset sesuai level kognitif",
         "<br><br>",
-        "<b>Referensi Utama DAN HARUS DI CITE dengan APA7 PADA AKHIR LAPORAN:</b>",
+        "<b>Citation:</b>",
         "1. Gottfredson, L. S. (1984). The role of intelligence and education in the division of labor.",
         "2. Kirsch, I. S., Jungeblut, A., Jenkins, L., & Kolstad, A. (1993). Adult literacy in America.",
         "3. Arvey, R. D. (1986). General ability in employment: A discussion.",
@@ -140,25 +146,78 @@ def generate_gemini_feedback(score, iq_score, iq_level_description, questions_an
         f"<br>- Pekerjaan: {nals_level_data['employment']}",
         f"<br>- Tingkat Profesional: {nals_level_data['professional_rate']}"
     ]
+    prompt = "\n".join(prompt_parts)
+    print(prompt)
+    # Generate content using Groq
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ],
+        model="llama3-8b-8192",  # Or another suitable model like "mixtral-8x7b-32768"
+    )
+    response_text = chat_completion.choices[0].message.content
+    
+    HTMLReformat = [
+        "I have this response"
+        "```",
+        f"{response_text}",
+        "```",
+        "Make the response into HTML format and into short points with the same language",
+        "Write ONLY the HTML code"
+        "No spaces before title."
+    ]
+    
+    prompt_html = "\n".join(HTMLReformat)
+    print(prompt_html)
 
-    response = model.generate_content(prompt_parts)
-    return response.text
+    # Generate content using Groq
+    response_html = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": prompt_html,
+            }
+        ],
+        model="llama3-8b-8192",  # Or another suitable model like "mixtral-8x7b-32768"
+    )
+
+    html_response_text = response_html.choices[0].message.content
+
+    # Remove leading spaces/newlines from HTML
+    cleaned_html_response = html_response_text.lstrip()
+    # Return the response text
+    #return response_html.choices[0].message.content
+    return cleaned_html_response
+
 
 
 
 @app.route('/test_llm_connection', methods=['GET'])
 def test_llm_connection():
     try:
-        model = genai.GenerativeModel("gemini-exp-1206")
-        response = model.generate_content("This is a test.")
+        # Use Groq client to generate content
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": "This is a test.",
+                }
+            ],
+            model="llama3-8b-8192",
+        )
+        response_text = chat_completion.choices[0].message.content
 
-        if response and response.text:
+        if response_text:
             return jsonify({'status': 'success', 'message': 'LLM Connection Successful'})
         else:
             return jsonify({'status': 'error', 'message': 'LLM Connection Failed', 'error': 'No response text from LLM'})
 
     except Exception as e:
         return jsonify({'status': 'error', 'message': 'LLM Connection Failed', 'error': str(e)})
+
 
 @app.route('/process_iq_test', methods=['POST'])
 def process_iq_test():
@@ -185,7 +244,7 @@ def process_iq_test():
             'correct': is_correct
         })
 
-    gemini_feedback = generate_gemini_feedback(score, iq_score_estimate, iq_level_description, questions_and_answers)
+    gemini_feedback = generate_groq_feedback(score, iq_score_estimate, iq_level_description, questions_and_answers)
 
     return jsonify({
         'iq_level_description': iq_level_description,

@@ -326,7 +326,8 @@ function processResults() {
   const iq = calculateIQ(score);
   const mode = document.querySelector('input[name="iq-emulation"]:checked').value;
   const emulationNote = mode !== 'normal' ? 
-    `<p class="emulation-note">(Emulated ${mode} IQ test results)</p>` : '';
+    //`<p class="emulation-note">(Emulated ${mode} IQ test results)</p>` : '';
+    `<p class="emulation-note">(-)</p>` : '';
 
   //iqScoreElement.innerText = `Your Score: ${score} out of ${questions.length}`;
   iqScoreElement.innerText = `Your Benchmark Performance Score is ${iq}`;
@@ -353,7 +354,7 @@ function processResults() {
     showContent(resultContent);
     document.body.classList.add('show-result');
     iqLevelElement.innerHTML = `
-      <h3>IQ Level: ${data.iq_level_description}</h3>
+      <h3>Recommendation Position: ${data.iq_level_description}</h3>
       <div class="gemini-feedback">
         ${data.gemini_feedback.replace(/\n/g, '<br>')}
       </div>

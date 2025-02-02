@@ -3,3 +3,4 @@ flask-cors
 google-generativeai 
 google-ai-generativelanguage
 python-dotenv
+groq

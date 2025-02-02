@@ -191,6 +191,17 @@ h1, h2 {
   transition: color 0.3s var(--transition-timing);
 }
 
+h3 {
+  display: block;
+  font-size: 0.9em;
+  margin-block-start: 1em;
+  margin-block-end: 1em;
+  margin-inline-start: 0px;
+  margin-inline-end: 0px;
+  font-weight: bold;
+  unicode-bidi: isolate;
+}
+
 #progress-info {
   display: none;
   justify-content: space-between;
@@ -471,7 +482,7 @@ body.show-result .progress-bar {
 }
 
 #iq-score { 
-  font-size: 2.5em; 
+  font-size: 1.5em; 
   color: var(--color-primary); 
   margin-bottom: 1.5rem;
   font-weight: 700;
@@ -494,6 +505,8 @@ body.show-result .progress-bar {
   font-size: 1em;
   line-height: 1.7;
   color: var(--color-text);
+  max-height: 200px; /* Set a maximum height for the feedback */
+  overflow-y: auto;   /* Add vertical scrollbar when content overflows */
 }
 
 .gemini-feedback p { margin-bottom: 1.125rem; }
