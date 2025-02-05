@@ -3,4 +3,4 @@ backend/.env
 backend/myvenv
 backend/__pycache__/
 .DS_Store
-
+**venv**

@@ -1,15 +1,23 @@
 import os
 import time
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, Response
 from flask_cors import CORS
 from dotenv import load_dotenv
 from groq import Groq
 import json
 import random
 import re
+import datetime
+import sqlite3
+import signal
+import sys
 
+test_mode_model_quick = True  # Set to True for quick testing, False for full model
 
-llm_model = "llama-3.3-70b-versatile"
+if test_mode_model_quick:
+    llm_model = "llama-3.1-8b-instant"
+else:
+    llm_model = "llama-3.3-70b-versatile"
 
 load_dotenv()
 
@@ -27,27 +35,145 @@ client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 app = Flask(__name__)
 
 # Update CORS configuration for all routes
-CORS(app, resources={
-    r"/*": {
-        "origins": [
-            "https://wpt-iqtest.netlify.app", 
-            "http://localhost:3000",
-            "http://localhost:5000",  # Added localhost:5000
-            "http://127.0.0.1:5000"   # Added 127.0.0.1:5000
-        ],
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"],
-        "expose_headers": ["Content-Type"],
-        "supports_credentials": True
-    }
-})
+CORS(
+    app,
+    resources={
+        r"/*": {
+            "origins": [
+                "https://wpt-iqtest.netlify.app",
+                "http://localhost:3000",
+                "http://localhost:5000",
+                "http://127.0.0.1:5000",
+            ],
+            "methods": ["GET", "POST", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "expose_headers": ["Content-Type"],
+            "supports_credentials": True,
+        }
+    },
+)
 
 # Add OPTIONS route handler for all routes
-@app.route('/', defaults={'path': ''}, methods=['OPTIONS'])
-@app.route('/<path:path>', methods=['OPTIONS'])
+@app.route("/", defaults={"path": ""}, methods=["OPTIONS"])
+@app.route("/<path:path>", methods=["OPTIONS"])
 def handle_options(path):
     response = app.make_default_options_response()
     return response
+
+# --- Database Functions ---
+def get_db_connection():
+    conn = sqlite3.connect("questions.db")
+    conn.row_factory = sqlite3.Row  # Access columns by name
+    return conn
+
+def init_db():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS generation_progress (
+            date TEXT PRIMARY KEY,
+            generated_count INTEGER
+        )
+    """
+    )
+    conn.commit()
+    conn.close()
+
+def get_daily_questions_table_name():
+    today = datetime.date.today()
+    return f"questions_{today.strftime('%Y_%m_%d')}"
+
+def create_daily_questions_table(conn):
+    table_name = get_daily_questions_table_name()
+    cursor = conn.cursor()
+    cursor.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS {table_name} (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            question_index INTEGER UNIQUE,
+            question_data JSON
+        )
+    """
+    )
+    conn.commit()
+
+def get_daily_questions():
+    conn = get_db_connection()
+    table_name = get_daily_questions_table_name()
+
+    create_daily_questions_table(conn) # Ensure table exists
+    
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT question_index, question_data FROM {table_name}")
+    rows = cursor.fetchall()
+    conn.close()
+
+    questions = {row["question_index"]: json.loads(row["question_data"]) for row in rows}
+    return questions
+
+def cache_question(question_index, question_data):
+    conn = get_db_connection()
+    table_name = get_daily_questions_table_name()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            f"INSERT INTO {table_name} (question_index, question_data) VALUES (?, ?)",
+            (question_index, json.dumps(question_data)),
+        )
+        update_generation_progress(conn)  # Update count after successful insert
+        conn.commit()
+    except sqlite3.IntegrityError:
+        print(
+            f"{Colors.YELLOW}Question with index {question_index} already exists in table {table_name}.{Colors.END}"
+        )
+    finally:
+        conn.close()
+
+def get_generation_progress():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    today = datetime.date.today().strftime("%Y-%m-%d")
+    cursor.execute("SELECT generated_count FROM generation_progress WHERE date = ?", (today,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return row["generated_count"]
+    else:
+        return 0
+
+def update_generation_progress(conn, generated_count=None):
+    cursor = conn.cursor()
+    today = datetime.date.today().strftime("%Y-%m-%d")
+    if generated_count is None:
+        # Increment existing count
+        cursor.execute(
+            "INSERT INTO generation_progress (date, generated_count) VALUES (?, 1) \
+            ON CONFLICT(date) DO UPDATE SET generated_count = generated_count + 1",
+            (today,),
+        )
+    else:
+        # Set specific count (e.g., when resuming)
+        cursor.execute(
+            "INSERT INTO generation_progress (date, generated_count) VALUES (?, ?) \
+            ON CONFLICT(date) DO UPDATE SET generated_count = ?",
+            (today, generated_count, generated_count),
+        )
+    conn.commit()
+
+# --- Signal Handling for Graceful Exit ---
+def signal_handler(sig, frame):
+    print(f"{Colors.YELLOW}\nExiting gracefully...{Colors.END}")
+    db_conn = get_db_connection()
+    if db_conn:
+        db_conn.close()
+        print(f"{Colors.GREEN}Database connection closed.{Colors.END}")
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)  # Handle Ctrl+C
+signal.signal(signal.SIGTERM, signal_handler)  # Handle termination signal
+
+# --- IQ Calculation and Interpretation ---
 
 iq_interpretation = {
     range(0, 13): "Umumnya untuk tenaga kerja pabrik atau kuli angkut",
@@ -56,7 +182,7 @@ iq_interpretation = {
     range(19, 25): "Skor rata-rata tenaga kerja yang bekerja dalam standard sistem alfa-numerik",
     range(25, 27): "Umumnya para supervisor pertama",
     range(27, 31): "Umumnya manajemen atau teknisi tingkat yang lebih tinggi",
-    range(31, 51): "Umumnya para profesional dan manajer eksekutif"
+    range(31, 51): "Umumnya para profesional dan manajer eksekutif",
 }
 
 def get_iq_level_description(score):
@@ -84,6 +210,8 @@ def calculate_iq(score, total_questions=47):
 
     return round(iq_estimate)
 
+# --- Groq Question Generation and Feedback ---
+
 def generate_groq_question(question_data):
     category_descriptions = {
         "1": "Vocabulary/Verbal Reasoning (Antonym)",
@@ -96,9 +224,9 @@ def generate_groq_question(question_data):
         "8": "Perceptual Speed (Matching)",
         "9": "General Knowledge",
     }
-    
-    category_name = category_descriptions.get(question_data.get('category', None), "General")
-    
+
+    category_name = category_descriptions.get(question_data.get("category", None), "General")
+
     # 1. Translate to English (Plain Text)
     translate_to_english_prompt = [
         "(JANGAN MENJAWAB PERTANYAAN, output hanya dalam format plain text)",
@@ -107,9 +235,11 @@ def generate_groq_question(question_data):
         f"""Original options: {', '.join(f'{i+1}. {opt["text"]}' for i, opt in enumerate(question_data['answers']))}""",
         f"Original correct answer index: {question_data['correctAnswerIndex']}",
     ]
-    
+
     translate_to_english_prompt = "\n".join(translate_to_english_prompt)
-    print(f"{Colors.BLUE}[Automata Cognitive Test] Translate to English Prompt: {translate_to_english_prompt}{Colors.END}")
+    print(
+        f"{Colors.BLUE}[Automata Cognitive Test] Translate to English Prompt: {translate_to_english_prompt}{Colors.END}"
+    )
     chat_completion_english = client.chat.completions.create(
         messages=[
             {
@@ -120,7 +250,9 @@ def generate_groq_question(question_data):
         model=llm_model,
     )
     response_text_english = chat_completion_english.choices[0].message.content
-    print(f"{Colors.YELLOW}[Automata Cognitive Test] Translate to English Response: {response_text_english}{Colors.END}")
+    print(
+        f"{Colors.YELLOW}[Automata Cognitive Test] Translate to English Response: {response_text_english}{Colors.END}"
+    )
 
     # 2. Generate new English question (Plain Text)
     generate_english_question_prompt = [
@@ -130,9 +262,11 @@ def generate_groq_question(question_data):
     ]
 
     generate_english_question_prompt = "\n".join(generate_english_question_prompt)
-    print(f"{Colors.BLUE}[Automata Cognitive Test] Generate English Prompt: {generate_english_question_prompt}{Colors.END}")
+    print(
+        f"{Colors.BLUE}[Automata Cognitive Test] Generate English Prompt: {generate_english_question_prompt}{Colors.END}"
+    )
     chat_completion_new_english = client.chat.completions.create(
-       messages=[
+        messages=[
             {
                 "role": "user",
                 "content": generate_english_question_prompt,
@@ -141,17 +275,21 @@ def generate_groq_question(question_data):
         model=llm_model,
     )
     response_text_new_english = chat_completion_new_english.choices[0].message.content
-    print(f"{Colors.YELLOW}[Automata Cognitive Test] Generate English Response: {response_text_new_english}{Colors.END}")
-    
+    print(
+        f"{Colors.YELLOW}[Automata Cognitive Test] Generate English Response: {response_text_new_english}{Colors.END}"
+    )
+
     # 3. Translate back to Indonesian (Plain Text)
     translate_back_prompt = [
-         "(JANGAN MENJAWAB PERTANYAAN, output hanya dalam format plain text)",
+        "(JANGAN MENJAWAB PERTANYAAN, output hanya dalam format plain text)",
         "Translate the following English question and options into Indonesian Make the question written and follows indonesian formal language and EYD grammar very strictly!:",
         f"Original English Generated: {response_text_new_english}",
     ]
-    
+
     translate_back_prompt = "\n".join(translate_back_prompt)
-    print(f"{Colors.BLUE}[Automata Cognitive Test] Translate Back to Indonesia Prompt: {translate_back_prompt}{Colors.END}")
+    print(
+        f"{Colors.BLUE}[Automata Cognitive Test] Translate Back to Indonesia Prompt: {translate_back_prompt}{Colors.END}"
+    )
     chat_completion_indonesian = client.chat.completions.create(
         messages=[
             {
@@ -162,28 +300,11 @@ def generate_groq_question(question_data):
         model=llm_model,
     )
     response_text_indonesian = chat_completion_indonesian.choices[0].message.content
-    print(f"{Colors.YELLOW}[Automata Cognitive Test] Translate Back to Indonesia Response: {response_text_indonesian}{Colors.END}")
-    
-    #4. Self-Audit Question
-    audit_prompt = [
-        "Carefully check the following question, and answer, Try to answer it and elaborate it properly with encapsulate with your <think> Your thoughts, elaboration, and counting </think> on how you approach the problem with your logic and the available context of the question and answer. if the question is lacking complete context (Like missing number when asked number, or lacking image or figure if being asked, or Lacking correct answer selection). return <QuestionFailureFlag>TRUE</QuestionFailureFlag>. However If all Logical correct. And autocorrect some typo writingcorrectAnswerIndex is mismatched on what you have answered. Change the index based on your audit. Generate the JSON if it's still doable",
-        f"Question: {response_text_indonesian}",
-    ]
-    audit_prompt = "\n".join(audit_prompt)
-    print(f"{Colors.BLUE}[Automata Cognitive Test] Self Audit Prompt: {audit_prompt}{Colors.END}")
-    chat_completion_audit = client.chat.completions.create(
-        messages=[
-            {
-                "role": "user",
-                "content": audit_prompt,
-            }
-        ],
-        model=llm_model,
+    print(
+        f"{Colors.YELLOW}[Automata Cognitive Test] Translate Back to Indonesia Response: {response_text_indonesian}{Colors.END}"
     )
-    audit_response = chat_completion_audit.choices[0].message.content
-    print(f"{Colors.YELLOW}[Automata Cognitive Test] Self Audit Response: {audit_response}{Colors.END}")
-                
-    #4. Self-Audit Question
+
+    # 4. Self-Audit Question
     audit_prompt = [
         "Carefully check the following question, and answer, Try to answer it and elaborate it properly with encapsulate with your <think> Your thoughts, elaboration, and counting </think> on how you approach the problem with your logic and the available context of the question and answer. if the question is lacking complete context (Like missing number when asked number, or lacking image or figure if being asked, or Lacking correct answer selection) and not logical or the answer is not correct. return <QuestionFailureFlag>. However If all Logical correct. And autocorrect some typo writingcorrectAnswerIndex is mismatched on what you have answered. Change the index based on your audit. Then Return in JSON format: {\"question\":\"translated question\", \"answers\":[{\"text\":\"answer1\"},{\"text\":\"answer2\"}],\"correctAnswerIndex\": index}",
         f"Question: {response_text_indonesian}",
@@ -203,14 +324,16 @@ def generate_groq_question(question_data):
     print(f"{Colors.YELLOW}[Automata Cognitive Test] Self Audit Response: {audit_response}{Colors.END}")
 
     if "<QuestionFailureFlag>" in audit_response:
-        print(f"{Colors.RED}[Automata Cognitive Test] Self-Audit failed, returning blank JSON because <QuestionFailureFlag> was found. Response was: {audit_response}{Colors.END}")
-        return {}
+        print(
+            f"{Colors.RED}[Automata Cognitive Test] Self-Audit failed, returning blank JSON because <QuestionFailureFlag> was found. Response was: {audit_response}{Colors.END}"
+        )
+        return {}  # Indicate failure
     else:
         # Regenerate using LLM with combined insights
         regeneration_prompt = [
             f"Original Indonesian: {response_text_indonesian}",
             f"Self-Audit Insights (Pick the correct answer from here): {audit_response}",
-            "ONLY Return in JSON format: {\"question\":\"translated question\", \"answers\":[{\"text\":\"answer1\"},{\"text\":\"answer2\"}],\"correctAnswerIndex\": index}"
+            "ONLY Return in JSON format: {\"question\":\"translated question\", \"answers\":[{\"text\":\"answer1\"},{\"text\":\"answer2\"}],\"correctAnswerIndex\": index}",
         ]
         regeneration_prompt = "\n".join(regeneration_prompt)
         print(f"{Colors.BLUE}[Automata Cognitive Test] Regeneration Prompt: {regeneration_prompt}{Colors.END}")
@@ -228,51 +351,57 @@ def generate_groq_question(question_data):
         print(f"{Colors.YELLOW}[Automata Cognitive Test] Regeneration Response: {regeneration_response}{Colors.END}")
 
         try:
-            match_regeneration = re.search(r'\s*({.*?})\s*$', regeneration_response, re.DOTALL)
+            match_regeneration = re.search(r"\s*({.*?})\s*$", regeneration_response, re.DOTALL)
             if match_regeneration:
                 json_string_regeneration = match_regeneration.group(1)
                 response_json_indonesian = json.loads(json_string_regeneration)
                 return response_json_indonesian
             else:
-                print(f"{Colors.RED}[Automata Cognitive Test] Failed to extract JSON from LLM for Regeneration. Response was {regeneration_response}{Colors.END}")
-                return {} # Return empty to trigger regeneration
+                print(
+                    f"{Colors.RED}[Automata Cognitive Test] Failed to extract JSON from LLM for Regeneration. Response was {regeneration_response}{Colors.END}"
+                )
+                return {}  # Indicate failure
         except json.JSONDecodeError:
-            print(f"{Colors.RED}[Automata Cognitive Test] Failed to decode JSON response from LLM for Regeneration. Response was {regeneration_response}{Colors.END}")
-            return {} # Return empty to trigger regeneration
-    
-def generate_groq_feedback(overall_score, iq_score, iq_level_description, questions_and_answers, category_scores):
+            print(
+                f"{Colors.RED}[Automata Cognitive Test] Failed to decode JSON response from LLM for Regeneration. Response was {regeneration_response}{Colors.END}"
+            )
+            return {}  # Indicate failure
+
+def generate_groq_feedback(
+    overall_score, iq_score, iq_level_description, questions_and_answers, category_scores
+):
     # Define IQ level characteristics based on NALS data
     nals_levels = {
         "Level 1 (≤225)": {
             "economic_indicators": "52% di luar angkatan kerja, 43% hidup dalam kemiskinan",
             "employment": "30% bekerja penuh waktu, median upah mingguan $240",
             "professional_rate": "5% bekerja di posisi profesional/manajerial",
-            "language_style": "sederhana dan langsung"
+            "language_style": "sederhana dan langsung",
         },
         "Level 2 (226-275)": {
             "economic_indicators": "35% di luar angkatan kerja, 23% hidup dalam kemiskinan",
             "employment": "43% bekerja penuh waktu, median upah mingguan $281",
             "professional_rate": "12% bekerja di posisi profesional/manajerial",
-            "language_style": "sederhana dan langsung"
-                    },
+            "language_style": "sederhana dan langsung",
+        },
         "Level 3 (276-325)": {
             "economic_indicators": "25% di luar angkatan kerja, 12% hidup dalam kemiskinan",
             "employment": "54% bekerja penuh waktu, median upah mingguan $339",
             "professional_rate": "23% bekerja di posisi profesional/manajerial",
-            "language_style": "seimbang dan informatif"
+            "language_style": "seimbang dan informatif",
         },
         "Level 4 (326-375)": {
             "economic_indicators": "17% di luar angkatan kerja, 8% hidup dalam kemiskinan",
             "employment": "64% bekerja penuh waktu, median upah mingguan $465",
             "professional_rate": "46% bekerja di posisiprofesional/manajerial",
-            "language_style": "detail dan analitis"
+            "language_style": "detail dan analitis",
         },
         "Level 5 (376-500)": {
             "economic_indicators": "11% di luar angkatan kerja, 4% hidup dalam kemiskinan",
             "employment": "72% bekerja penuh waktu, median upah mingguan $650",
             "professional_rate": "70% bekerja di posisi profesional/manajerial",
-            "language_style": "kompleks dan mendalam"
-        }
+            "language_style": "kompleks dan mendalam",
+        },
     }
 
     # Determine NALS level based on IQ score
@@ -290,7 +419,7 @@ def generate_groq_feedback(overall_score, iq_score, iq_level_description, questi
 
     # Initialize category tracking
     category_stats = {}
-    
+
     category_descriptions = {
         "1": "Vocabulary/Verbal Reasoning (Antonym)",
         "2": "Numerical Reasoning (Number Series)",
@@ -304,19 +433,20 @@ def generate_groq_feedback(overall_score, iq_score, iq_level_description, questi
     }
 
     for qa in questions_and_answers:
-        category = qa.get('category', 'Unknown')
+        category = qa.get("category", "Unknown")
         if category not in category_stats:
-            category_stats[category] = {'correct': 0, 'incorrect': 0}
-        if qa['correct']:
-            category_stats[category]['correct'] += 1
+            category_stats[category] = {"correct": 0, "incorrect": 0}
+        if qa["correct"]:
+            category_stats[category]["correct"] += 1
         else:
-            category_stats[category]['incorrect'] += 1
+            category_stats[category]["incorrect"] += 1
 
     category_analysis_text = "<br><br><b>Category Performance:</b><br>"
     for category, stats in category_stats.items():
         category_name = category_descriptions.get(category, "Unknown")
-        category_analysis_text += f"- {category_name}: Correct: {stats['correct']}, Incorrect: {stats['incorrect']}<br>"
-
+        category_analysis_text += (
+            f"- {category_name}: Correct: {stats['correct']}, Incorrect: {stats['incorrect']}<br>"
+        )
 
     prompt_parts = [
         "(hanya laporan, DAN TEST INI VALID, BERIKAN REKOMENDASI, KARENA INI SEBAGAI TOOLS UNTUK PSIKOLOG, jangan seperti anda menjawab pertanyaan dan request saya, gak usah pakai 'tentu' atau 'apalah'. Langsung ke laporannya saja. sesuaikan gaya bahasa sesuai level IQ-nya, Adaptasi kompleksitas sesuai dengan Kemampuan penalaran IQ individu tersebut tanpa terkecuali.)",
@@ -355,13 +485,17 @@ def generate_groq_feedback(overall_score, iq_score, iq_level_description, questi
         "4. National Adult Literacy Survey (NALS) - Economic Outcomes Data",
         "<br><br>",
         "<b>Berikut adalah daftar pertanyaan dan jawaban yang diberikan oleh peserta tes:</b>",
-        "<br>".join(f"{qa['question']} -> Jawaban: {qa['answer']}, Benar: {qa['correct']}" for qa in questions_and_answers),
+        "<br>".join(
+            f"{qa['question']} -> Jawaban: {qa['answer']}, Benar: {qa['correct']}"
+            for qa in questions_and_answers
+        ),
         f"<br><br><b>NALS Level Data untuk Skor IQ {iq_score}:</b>",
         f"<br>- Indikator Ekonomi: {nals_level_data['economic_indicators']}",
         f"<br>- Pekerjaan: {nals_level_data['employment']}",
         f"<br>- Tingkat Profesional: {nals_level_data['professional_rate']}",
         category_analysis_text,
-        f"<br><br><b>Category Descriptions:</b><br>" + "<br>".join(f"{key}: {value}" for key, value in category_descriptions.items())
+        f"<br><br><b>Category Descriptions:</b><br>"
+        + "<br>".join(f"{key}: {value}" for key, value in category_descriptions.items()),
     ]
     prompt = "\n".join(prompt_parts)
     print(f"{Colors.BLUE}[Automata Cognitive Test] Feedback Prompt: {prompt}{Colors.END}")
@@ -373,12 +507,11 @@ def generate_groq_feedback(overall_score, iq_score, iq_level_description, questi
                 "content": prompt,
             }
         ],
-        model=llm_model,  # Or another suitable model like "mixtral-8x
-        # Or another suitable model like "mixtral-8x7b-32768"
+        model=llm_model,
     )
     response_text = chat_completion.choices[0].message.content
     print(f"{Colors.YELLOW}[Automata Cognitive Test] Feedback Response: {response_text}{Colors.END}")
-    
+
     HTMLReformat = [
         "I have this response",
         "```",
@@ -386,7 +519,7 @@ def generate_groq_feedback(overall_score, iq_score, iq_level_description, questi
         "```",
         "Make the response into HTML format and into short points with the same language",
         "Write ONLY the HTML code",
-        "No spaces before title."
+        "No spaces before title.",
     ]
 
     prompt_html = "\n".join(HTMLReformat)
@@ -399,7 +532,7 @@ def generate_groq_feedback(overall_score, iq_score, iq_level_description, questi
                 "content": prompt_html,
             }
         ],
-        model=llm_model,  # Or another suitable model like "mixtral-8x7b-32768"
+        model=llm_model,
     )
 
     html_response_text = response_html.choices[0].message.content
@@ -407,11 +540,80 @@ def generate_groq_feedback(overall_score, iq_score, iq_level_description, questi
     # Remove leading spaces/newlines from HTML
     cleaned_html_response = html_response_text.lstrip()
     # Return the response text
-    #return response_html.choices[0].message.content
     return cleaned_html_response
 
+# --- Prefetching and Serving Questions ---
 
-@app.route('/test_llm_connection', methods=['GET'])
+def prefetch_questions(original_questions):
+    conn = get_db_connection()
+
+    print(f"{Colors.BLUE}[Automata Cognitive Test] Prefetching questions...{Colors.END}")
+
+    daily_questions_table_name = get_daily_questions_table_name()
+    create_daily_questions_table(conn)
+
+    generated_count = get_generation_progress()
+
+    if generated_count >= len(original_questions):
+        print(f"{Colors.GREEN}Questions for today already prefetched.{Colors.END}")
+        conn.close()
+        return  # Exit early if already prefetched
+
+    for i, question in enumerate(original_questions):
+        if i < generated_count:
+            continue
+
+        print(f"{Colors.BLUE}Generating question index {i}...{Colors.END}")
+        new_question_data = generate_groq_question(question)
+
+        if new_question_data:
+            if "error" in new_question_data:
+                print(
+                    f"{Colors.RED}Error generating question index {i}: {new_question_data['error']}{Colors.END}"
+                )
+            else:
+                cache_question(i, new_question_data)
+                generated_count += 1
+                print(f"{Colors.GREEN}Cached question index {i}{Colors.END}")
+        else:
+            print(f"{Colors.RED}Failed to generate and cache question index {i}{Colors.END}")
+
+        # No need to yield progress updates at startup
+        # time.sleep(2)  # Delay removed for faster startup
+
+    print(f"{Colors.GREEN}Prefetching complete.{Colors.END}")
+    conn.close()
+
+@app.route("/get_question", methods=["POST"])
+def get_question():
+    print(f"{Colors.BLUE}[Automata Cognitive Test] Received GET_QUESTION request{Colors.END}")
+    data = request.get_json()
+
+    if not data:
+        print(f"{Colors.RED}[Automata Cognitive Test] No data received in request{Colors.END}")
+        return jsonify({"error": "No data received"}), 400
+
+    if "question_index" not in data:
+        print(f"{Colors.RED}[Automata Cognitive Test] No question_index in data{Colors.END}")
+        return jsonify({"error": "Invalid request - missing question_index"}), 400
+
+    question_index = data["question_index"]
+    print(f"{Colors.BLUE}[Automata Cognitive Test] Processing question index: {question_index}{Colors.END}")
+
+    daily_questions = get_daily_questions()
+    if question_index in daily_questions:
+        return jsonify({"question": daily_questions[question_index], "generation_percentage": 100})
+    else:
+        return jsonify({"error": f"Question index {question_index} not found in today's questions"}), 404
+
+@app.route("/get_prefetch_progress")
+def get_prefetch_progress():
+    original_questions = load_questions()
+    return Response(prefetch_questions(original_questions), mimetype="text/event-stream")
+
+# --- Other Routes ---
+
+@app.route("/test_llm_connection", methods=["GET"])
 def test_llm_connection():
     try:
         # Use Groq client to generate content
@@ -427,127 +629,86 @@ def test_llm_connection():
         response_text = chat_completion.choices[0].message.content
 
         if response_text:
-            return jsonify({'status': 'success', 'message': 'LLM Connection Successful'})
+            return jsonify({"status": "success", "message": "LLM Connection Successful"})
         else:
-            return jsonify({'status': 'error', 'message': 'LLM Connection Failed', 'error': 'No response text from LLM'})
+            return jsonify(
+                {"status": "error", "message": "LLM Connection Failed", "error": "No response text from LLM"}
+            )
 
     except Exception as e:
-        return jsonify({'status': 'error', 'message': 'LLM Connection Failed', 'error': str(e)})
+        return jsonify({"status": "error", "message": "LLM Connection Failed", "error": str(e)})
 
-# Store generated questions in a dictionary, indexed by their original index
-generated_questions = {}
-generation_percentage = 0
-original_questions = []
-
-@app.route('/get_question', methods=['POST'])
-def get_question():
-    print(f"{Colors.BLUE}[Automata Cognitive Test] Received GET_QUESTION request{Colors.END}")
-    global generated_questions, generation_percentage
-    data = request.get_json()
-    
-    if not data:
-        print(f"{Colors.RED}[Automata Cognitive Test] No data received in request{Colors.END}")
-        return jsonify({'error': 'No data received'}), 400
-        
-    if 'question_index' not in data:
-        print(f"{Colors.RED}[Automata Cognitive Test] No question_index in data{Colors.END}")
-        return jsonify({'error': 'Invalid request - missing question_index'}), 400
-
-    question_index = data['question_index']
-    print(f"{Colors.BLUE}[Automata Cognitive Test] Processing question index: {question_index}{Colors.END}")
-    
-    if question_index not in generated_questions:
-        # Generate a new question using Groq
-        if question_index < len(original_questions):
-            new_question_data = generate_groq_question(original_questions[question_index])
-            if new_question_data:
-               if 'error' in new_question_data:
-                   return jsonify(new_question_data), 500
-               elif not new_question_data: #Check if it returns empty json
-                   return get_question() #regenerate if empty
-               else:
-                  generated_questions[question_index] = new_question_data
-                  generation_percentage =  round((len(generated_questions) / len(original_questions)) * 100, 2)
-            else:
-                return jsonify({'error': f'Failed to generate question for index {question_index}'}), 500
-        else:
-          return jsonify({'error': 'Invalid question index'}), 400
-    
-    return jsonify(
-        {
-            'question': generated_questions[question_index],
-            'generation_percentage': generation_percentage
-        }
-    )
-
-@app.route('/process_iq_test', methods=['POST'])
+@app.route("/process_iq_test", methods=["POST"])
 def process_iq_test():
     data = request.get_json()
-    overall_score = data.get('overall_score')
-    category_scores = data.get('category_scores')
-    user_responses = data.get('user_responses')
-
+    overall_score = data.get("overall_score")
+    category_scores = data.get("category_scores")
+    user_responses = data.get("user_responses")
 
     if overall_score is None:
-        return jsonify({'error': 'Overall score not provided'}), 400
+        return jsonify({"error": "Overall score not provided"}), 400
     if user_responses is None:
-        return jsonify({'error': 'User responses not provided'}), 400
+        return jsonify({"error": "User responses not provided"}), 400
     if category_scores is None:
-         return jsonify({'error': 'Category scores not provided'}), 400
+        return jsonify({"error": "Category scores not provided"}), 400
 
     iq_level_description = get_iq_level_description(overall_score)
     iq_score_estimate = calculate_iq(overall_score)
-    
+
     questions_and_answers = []
     for response in user_responses:
-        question_text = response['question']
-        answer_text = response['answer']
-        is_correct = response['correct']
-        questions_and_answers.append({
-            'question': question_text,
-            'answer': answer_text,
-            'correct': is_correct,
-             'category':response.get('category', 'Unknown')
-        })
+        question_text = response["question"]
+        answer_text = response["answer"]
+        is_correct = response["correct"]
+        questions_and_answers.append(
+            {
+                "question": question_text,
+                "answer": answer_text,
+                "correct": is_correct,
+                "category": response.get("category", "Unknown"),
+            }
+        )
 
-    gemini_feedback = generate_groq_feedback(overall_score, iq_score_estimate, iq_level_description, questions_and_answers, category_scores)
+    gemini_feedback = generate_groq_feedback(
+        overall_score, iq_score_estimate, iq_level_description, questions_and_answers, category_scores
+    )
 
-    return jsonify({
-        'iq_level_description': iq_level_description,
-        'iq_score': iq_score_estimate,
-        'gemini_feedback': gemini_feedback
-    })
+    return jsonify(
+        {
+            "iq_level_description": iq_level_description,
+            "iq_score": iq_score_estimate,
+            "gemini_feedback": gemini_feedback,
+        }
+    )
 
-@app.route('/')
+@app.route("/")
 def serve_index():
-    return send_file('index.html')
+    return send_file("index.html")
 
-@app.route('/<path:filename>')
+@app.route("/<path:filename>")
 def serve_static(filename):
     try:
         return send_file(filename)
     except FileNotFoundError:
-        # Return a 404 response for missing files
-        return '', 404
+        return "", 404
 
-# Add specific handler for favicon.ico
-@app.route('/favicon.ico')
+@app.route("/favicon.ico")
 def favicon():
-    # Return a 204 No Content response for favicon requests
-    return '', 204
+    return "", 204
 
-# Load questions from questions.json as JSON
 def load_questions():
-    with open('questions.json', 'r') as f:
+    with open("questions.json", "r") as f:
         try:
-            return json.load(f)['questions']
+            return json.load(f)["questions"]
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON format in questions.json: {e}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+    init_db()
     try:
         original_questions = load_questions()
-        app.run(debug=True, port=8081) #this is the cloudflared configured localhost
+        prefetch_questions(original_questions)  # Prefetch at startup
+        app.run(debug=True, port=8081)
     except ValueError as e:
         print(f"Error loading questions: {e}")
