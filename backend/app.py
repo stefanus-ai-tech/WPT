@@ -53,6 +53,7 @@ CORS(
     },
 )
 
+
 # Add OPTIONS route handler for all routes
 @app.route("/", defaults={"path": ""}, methods=["OPTIONS"])
 @app.route("/<path:path>", methods=["OPTIONS"])
