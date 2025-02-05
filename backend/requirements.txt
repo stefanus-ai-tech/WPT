@@ -5,3 +5,5 @@ google-ai-generativelanguage
 python-dotenv
 groq
 requests
+flask_sqlalchemy
+apscheduler
