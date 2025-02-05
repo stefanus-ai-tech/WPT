@@ -103,8 +103,8 @@ def generate_groq_question(question_data):
     translate_to_english_prompt = [
         "(JANGAN MENJAWAB PERTANYAAN, output hanya dalam format plain text)",
         "Translate the following Indonesian question and options into English:",
-         f"Original question: {question_data['question']}",
-        f"Original options: {', '.join([f'{i+1}. {opt['text']}' for i, opt in enumerate(question_data['answers'])])}",
+        f"Original question: {question_data['question']}",
+        f"""Original options: {', '.join(f'{i+1}. {opt["text"]}' for i, opt in enumerate(question_data['answers']))}""",
         f"Original correct answer index: {question_data['correctAnswerIndex']}",
     ]
     
