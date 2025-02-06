@@ -1,3 +1,5 @@
+venv
+.env
 backend/venv/
 backend/.env
 backend/myvenv
