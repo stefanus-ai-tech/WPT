@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Cognitive Insights Assessment</title>
+    <link rel="stylesheet" href="./src/style.css">
+    <link rel="stylesheet" href="./src/index.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  </head>
+<body>
+  <div class="grain"></div>
+  <div class="modal-overlay"></div>
+  <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
+    <svg class="sun-icon" viewBox="0 0 24 24" width="24" height="24">
+      <path d="M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 2a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM11 0h2v4h-2V0zM11 20h2v4h-2v-4zM0 11v2h4v-2H0zM20 11v2h4v-2h-4z"/>
+    </svg>
+    <svg class="moon-icon" viewBox="0 0 24 24" width="24" height="24">
+      <path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/>
+    </svg>
+  </button>
+  <div class="container">
+    <!-- Test Container -->
+    <div id="test-container">
+      <h1>
+        <span class="material-icons">psychology</span>
+        Cognitive Insights Assessment
+      </h1>
+      <button id="start-button" class="primary-button">
+        <span class="material-icons">play_arrow</span>
+        Start Test
+      </button>
+    </div>
+    <div id="emulation-controls" class="emulation-controls developer-only">
+        <h3>
+          <span class="material-icons">developer_mode</span>
+          Test Mode:
+        </h3>
+        <div class="radio-group">
+          <label>
+            <input type="radio" name="iq-emulation" value="normal" checked>
+            <span class="material-icons">person</span>
+            Normal Test
+          </label>
+          <label>
+            <input type="radio" name="iq-emulation" value="low">
+            <span class="material-icons">trending_down</span>
+            Emulate Low IQ (~80)
+          </label>
+          <label>
+            <input type="radio" name="iq-emulation" value="medium">
+            <span class="material-icons">trending_flat</span>
+            Emulate Medium IQ (~100)
+          </label>
+          <label>
+            <input type="radio" name="iq-emulation" value="high">
+            <span class="material-icons">trending_up</span>
+            Emulate High IQ (~130)
+          </label>
+        </div>
+      </div>
+    <div id="progress-info" class="hide">
+        <div id="timer">
+          <span class="material-icons">timer</span>
+          Time Left: <span id="time">60</span> minutes
+        </div>
+        <div class="question-counter">
+          <span class="material-icons">quiz</span>
+          Question <span id="current-question">0</span>/<span id="total-questions">0</span>
+        </div>
+      </div>
+      <div id="question-container" class="card-container hide">
+        <div class="progress-bar">
+          <div class="progress"></div>
+        </div>
+        <div id="question" class="floating-card"></div>
+        <div id="answer-buttons"></div>
+        <div class="navigation-controls">
+          <button id="prev-button" class="nav-button hide">
+            <span class="material-icons">arrow_back</span>
+            Previous
+          </button>
+          <button id="next-button" class="nav-button hide">
+            Next
+            <span class="material-icons">arrow_forward</span>
+          </button>
+        </div>
+      </div>
+      <!-- Dynamic Content Container -->
+      <div id="dynamic-container" class="hide">
+      <!-- Analysis Content -->
+      <div id="analysis-content" class="hide">
+        <h1>
+          <span class="material-icons">analytics</span>
+          Analyzing Results
+        </h1>
+        <div id="loading-indicator">
+          <div class="spinner"></div>
+          <p>
+            <span class="material-icons">auto_awesome</span>
+            Please wait while we analyze your test results...
+          </p>
+        </div>
+      </div>
+      <!-- Result Content -->
+      <div id="result-content" class="hide">
+        <h2>
+          <span class="material-icons">psychology</span>
+          Your Assessment Results
+        </h2>
+        <p id="iq-score"></p>
+        <div id="iq-level"></div>
+        <button id="restart-button" class="primary-button">
+          <span class="material-icons">replay</span>
+          Take Test Again
+        </button>
+      </div>
+      </div>
+    </div>
+    <footer class="footer">
+      <p>Cognitive Assessment Experimental, Zephyrine Foundation 2025</p>
+      <nav>
+        <a href="#">Privacy Policy</a> | <a href="#">Terms of Use</a>
+      </nav>
+    </footer>
+  <script src="./src/questions.json"></script>
+  <script src="./src/config.js" type="module"></script>
+  <script src="./src/script.js" type="module"></script>
+</body>
+</html>

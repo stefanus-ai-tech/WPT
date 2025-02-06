@@ -42,8 +42,8 @@ CORS(
             "origins": [
                 "https://wpt-iqtest.netlify.app",
                 "http://localhost:3000",
-                "http://localhost:5000",
-                "http://127.0.0.1:5000",
+                "http://localhost:5174",
+                "http://127.0.0.1:5174",
             ],
             "methods": ["GET", "POST", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"],
