@@ -36,6 +36,7 @@ let timerInterval: number;
 let userAnswers: (number | null)[];
 let originalQuestions: Question[] = [];
 let currentGeneratedQuestion: Question = { question: "", answers: [], correctAnswerIndex: 0, category: "0" };
+let answeredQuestions: Question[] = [];
 
 // Updated questionCategories to match app.py
 const questionCategories: string[] = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
@@ -154,6 +155,9 @@ function showQuestion(question: Question, direction: string = 'next'): void {
         );
 
         updateProgressBar();
+
+        // Store the current question
+        answeredQuestions[currentQuestionIndex] = question;
 
         // Mark selected answer if exists
        if (userAnswers[currentQuestionIndex] !== null) {
@@ -373,18 +377,30 @@ function showContent(contentElement: HTMLElement): void {
 }
 
 
-function autoAnswerQuestions(emulatedAnswers: number[]): void {
-    (document.getElementById('timer') as HTMLElement).style.display = 'none';
+async function autoAnswerQuestions(emulatedAnswers: number[]): Promise<void> {
+  (document.getElementById('timer') as HTMLElement).style.display = 'none';
 
-    shuffledQuestionIndices.forEach((index: number, arrayIndex: number): void => {
-        const selectedAnswerIndex: number = emulatedAnswers[arrayIndex];
+  for (let arrayIndex = 0; arrayIndex < shuffledQuestionIndices.length; arrayIndex++) {
+    const questionIndex = shuffledQuestionIndices[arrayIndex];
+    
+    // Fetch the question data
+    try {
+        const question = await fetchNewQuestion();
+        answeredQuestions[arrayIndex] = question; // Store the fetched question
+
+        const selectedAnswerIndex = emulatedAnswers[arrayIndex];
         userAnswers[arrayIndex] = selectedAnswerIndex;
-        if (selectedAnswerIndex === currentGeneratedQuestion.correctAnswerIndex) {
-             score[currentGeneratedQuestion.category]++;
-        }
-    });
 
-    endTest();
+        if (selectedAnswerIndex === question.correctAnswerIndex) {
+            score[question.category]++;
+        }
+    } catch (error) {
+        console.error(`Error fetching question for auto-answer at index ${questionIndex}:`, error);
+        // Handle the error appropriately, e.g., skip this question or stop
+    }
+  }
+
+  endTest();
 }
 
 async function startTest(): Promise<void> {
@@ -459,21 +475,37 @@ function processResults(): void {
     iqScoreElement.innerHTML += emulationNote;
 
     const userResponses = shuffledQuestionIndices.map((index: number, arrayIndex: number) => {
+        const answeredQuestion = answeredQuestions[arrayIndex];
         let answerText = "Not answered";
-        if (currentGeneratedQuestion.answers) { // Check if currentGeneratedQuestion.answers exists
-          if (userAnswers[arrayIndex] !== null) {
-              answerText = currentGeneratedQuestion.answers[userAnswers[arrayIndex] as number]?.text || "Answer not available";
-          }
+
+        if (answeredQuestion && answeredQuestion.answers) {
+            if (userAnswers[arrayIndex] !== null) {
+                answerText = answeredQuestion.answers[userAnswers[arrayIndex] as number]?.text || "Answer not available";
+            }
+        }
+
+        if (!answeredQuestion) {
+            console.warn(`answeredQuestion is null or undefined at index ${arrayIndex}`);
+            return {
+                question: "Question not available",
+                answer: "Not answered",
+                correct: false,
+                category: "Unknown"
+            };
+        }
+        answerText = "Not answered";  // Removed 'let'
+        if (answeredQuestion.answers && userAnswers[arrayIndex] !== null) {
+            answerText = answeredQuestion.answers[userAnswers[arrayIndex] as number]?.text || "Answer not available";
         }
         return {
-            question: currentGeneratedQuestion.question,
+            question: answeredQuestion.question,
             answer: answerText,
-            correct: userAnswers[arrayIndex] === currentGeneratedQuestion.correctAnswerIndex,
-            category: currentGeneratedQuestion.category
+            correct: userAnswers[arrayIndex] === answeredQuestion.correctAnswerIndex,
+            category: answeredQuestion.category
         };
     });
-  
-    const categoryScores: { [key: string]: { score: number; responses: typeof userResponses } } = {};
+
+      const categoryScores: { [key: string]: { score: number; responses: typeof userResponses } } = {};
     questionCategories.forEach((category: string): void => {
          categoryScores[category] = {
            score: score[category],
@@ -500,7 +532,7 @@ function processResults(): void {
             iqLevelElement.innerHTML = `
           <h3>Recommendation Position: ${data.iq_level_description}</h3>
           <div class="gemini-feedback">
-          ${data.gemini_feedback.replace(/\n/g, '<br>')}
+          ${data.gemini_feedback?.replace(/\n/g, '<br>') || 'Unable to generate feedback.'}
           </div>
       `;
         })
@@ -570,19 +602,20 @@ function getEmulatedAnswers(): number[] | null {
 }
 
 function resetState(): void {
-  shuffledQuestionIndices = null as any;
-  currentQuestionIndex = 0;
-  score = {};
-  questionCategories.forEach((category: string): void => {
-      score[category] = 0;
-  });
-  timeLeft = 2700;
-  userAnswers = [];
-  originalQuestions = [];
-  currentGeneratedQuestion = { question: "", answers: [], correctAnswerIndex: 0, category: "0" };  // Initialize to avoid undefined access
-  if (timerInterval) {
-      clearInterval(timerInterval);
-  }
+    answeredQuestions = [];
+    shuffledQuestionIndices = []; // Initialize to empty array
+    currentQuestionIndex = 0;
+    score = {};
+    questionCategories.forEach((category: string): void => {
+        score[category] = 0;
+    });
+    timeLeft = 2700;
+    userAnswers = [];
+    originalQuestions = [];
+    currentGeneratedQuestion = { question: "", answers: [], correctAnswerIndex: 0, category: "0" };  // Initialize to avoid undefined access
+    if (timerInterval) {
+        clearInterval(timerInterval);
+    }
 }
 
 function restartTest(): void {
