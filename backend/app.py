@@ -12,7 +12,7 @@ import sqlite3
 import signal
 import sys
 
-test_mode_model_quick = True  # Set to True for quick testing, False for full model
+test_mode_model_quick = False  # Set to True for quick testing, False for full model
 
 if test_mode_model_quick:
     llm_model = "llama-3.1-8b-instant"
