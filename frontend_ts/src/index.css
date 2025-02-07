@@ -723,7 +723,7 @@ body.show-result .progress-bar {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-primary);
+  background: #808080;
   border-radius: 4px;
 }
 
